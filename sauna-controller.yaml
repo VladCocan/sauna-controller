@@ -12,9 +12,9 @@ substitutions:
   mqtt_topic_base: "sauna/${internalname}"
 
   # Contactor-friendly time-base for windowed control
-  contactor_window_s: "360"            # Window length (s) used to approximate PID power with ON/OFF
-  contactor_min_on_s: "120"             # Minimum ON time (s) inside a window
-  contactor_min_off_s: "150"            # Minimum OFF time (s) inside a window
+  contactor_window_s: "180"            # Window length (s) used to approximate PID power with ON/OFF
+  contactor_min_on_s: "45"             # Minimum ON time (s) inside a window
+  contactor_min_off_s: "45"            # Minimum OFF time (s) inside a window
 
 
 # ================================
@@ -635,7 +635,7 @@ sensor:
       return (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
               !isnan(id(t_control).state) &&
               !isnan(id(t_outdoor).state) &&
-              (id(pid_duty) > 0.05f || id(boost_active))) ? 1 : 0;
+              id(contactor_on)) ? 1 : 0;
 
   # Cabin thermal model (online identification)
   - platform: template
@@ -997,7 +997,7 @@ globals:
   - id: eta_A_est
     type: float
     restore_value: yes
-    initial_value: "1.20"
+    initial_value: "0.80"
 
   - id: eta_B_est
     type: float
@@ -1147,9 +1147,9 @@ climate:
     heat_output: pid_heat_output
 
     control_parameters:
-      kp: 0.75
-      ki: 0.0035
-      kd: 35
+      kp: 0.02
+      ki: 0.0002
+      kd: 0.01
 
     visual:
       min_temperature: 30
@@ -1477,7 +1477,7 @@ interval:
               id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
               !isnan(id(t_control).state) &&
               !isnan(id(t_outdoor).state) &&
-              (id(pid_duty) > 0.05f || id(boost_active))) {
+              id(contactor_on)) {
 
             uint32_t now_ms2 = now_ms;
 
@@ -1487,7 +1487,7 @@ interval:
             } else {
               float dmin = (now_ms2 - id(eta_last_ms)) / 60000.0f;
 
-              if (dmin >= (5.0f / 60.0f)) {
+              if (dmin >= 5.0f) {
                 float t_now = id(t_control).state;
                 float dt = t_now - id(eta_last_t);
 
@@ -1496,9 +1496,9 @@ interval:
 
                 float rate_obs = dt / dmin;
 
-                if (rate_obs > 0.05f && rate_obs < 5.0f) {
+                if (rate_obs > 0.2f && rate_obs < 2.0f) {
                   float sp = id(sauna_climate).target_temperature;
-                  if (t_now < sp - 3.0f) {
+                  if (t_now < sp - 5.0f) {
                     float x = id(t_outdoor).state;
                     float y = rate_obs;
 
@@ -1619,7 +1619,7 @@ interval:
               id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
               !isnan(id(t_control).state) &&
               !isnan(id(t_outdoor).state) &&
-              (id(pid_duty) > 0.05f || id(boost_active))
+              id(contactor_on)
             );
 
             double thermal_ua = NAN;
