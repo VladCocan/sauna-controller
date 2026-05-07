@@ -7,5 +7,4 @@
 #   ./esphome.sh run sauna-controller.yaml
 
 cd "$(dirname "$0")"
-source esphome-venv/bin/activate
-esphome "$@"
+./esphome-venv/bin/python -m esphome "$@"

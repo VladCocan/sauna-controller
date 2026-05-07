@@ -340,8 +340,7 @@ sensor:
     accuracy_decimals: 1
     update_interval: 1s
     lambda: |-
-      // ESPHome 2025.9+: current_option() returns a string-like object
-      std::string mode = id(control_temp_source).current_option().c_str();
+      std::string mode = id(control_temp_source).state.c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
 
       float top  = id(t_top).state;
@@ -742,7 +741,7 @@ sensor:
     accuracy_decimals: 0
     update_interval: 2s
     lambda: |-
-      std::string mode = id(control_temp_source).current_option().c_str();
+      std::string mode = id(control_temp_source).state.c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
 
       float top  = id(t_top).state;
@@ -776,7 +775,7 @@ text_sensor:
     entity_category: diagnostic
     update_interval: 5s
     lambda: |-
-      std::string mode = id(control_temp_source).current_option().c_str();
+      std::string mode = id(control_temp_source).state.c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
       return mode;
 
@@ -959,6 +958,10 @@ globals:
 
   # Windowed control state
   - id: window_start_ms
+    type: uint32_t
+    initial_value: "0"
+
+  - id: window_on_ms
     type: uint32_t
     initial_value: "0"
 
@@ -1217,6 +1220,8 @@ interval:
             id(contactor_on) = false;
             id(boost_active) = false;
             id(pid_duty) = 0.0f;
+            id(window_start_ms) = 0;
+            id(window_on_ms) = 0;
 
             id(force_climate_off) = true;  // also turn climate OFF to reflect reality in HA
             return;
@@ -1257,6 +1262,8 @@ interval:
             id(contactor_on) = false;
             id(boost_active) = false;
             id(pid_duty) = 0.0f;
+            id(window_start_ms) = 0;
+            id(window_on_ms) = 0;
 
             // Throttled warning every 10 seconds (avoid log spam / blocking)
             const uint32_t LOG_INTERVAL_MS = 10000UL;
@@ -1300,6 +1307,8 @@ interval:
             id(contactor_on) = false;
             id(boost_active) = false;
             id(pid_duty) = 0.0f;
+            id(window_start_ms) = 0;
+            id(window_on_ms) = 0;
             id(session_start) = 0;
 
             // Destratification fan (allowed even when sauna is OFF)
@@ -1336,6 +1345,8 @@ interval:
             id(contactor_on) = false;
             id(boost_active) = false;
             id(pid_duty) = 0.0f;
+            id(window_start_ms) = 0;
+            id(window_on_ms) = 0;
 
             id(force_climate_off) = true;
             return;
@@ -1378,32 +1389,49 @@ interval:
           const uint32_t MIN_ON_MS  = (uint32_t)(${contactor_min_on_s}  * 1000UL);
           const uint32_t MIN_OFF_MS = (uint32_t)(${contactor_min_off_s} * 1000UL);
 
-          if (id(window_start_ms) == 0) id(window_start_ms) = now_ms;
+          auto compute_on_ms = [&](float duty) -> uint32_t {
+            // Sanitize PID duty and convert to ON time for the full window.
+            if (isnan(duty)) duty = 0.0f;
+            if (duty < 0.0f) duty = 0.0f;
+            if (duty > 1.0f) duty = 1.0f;
+
+            uint32_t on_ms = (uint32_t)(duty * (float)WINDOW_MS + 0.5f);
+
+            // Enforce minimum ON pulse (if not zero)
+            if (on_ms > 0 && on_ms < MIN_ON_MS) on_ms = MIN_ON_MS;
+
+            // Clamp to window size
+            if (on_ms > WINDOW_MS) on_ms = WINDOW_MS;
+
+            // Enforce minimum OFF time (unless full ON)
+            if (on_ms < WINDOW_MS && (WINDOW_MS - on_ms) < MIN_OFF_MS) {
+              on_ms = WINDOW_MS - MIN_OFF_MS;
+            }
+
+            return on_ms;
+          };
+
+          // Latch on-time once per window to avoid relay chatter near threshold.
+          if (id(window_start_ms) == 0) {
+            id(window_start_ms) = now_ms;
+            float duty = id(boost_active) ? 1.0f : id(pid_duty);
+            id(window_on_ms) = compute_on_ms(duty);
+          }
 
           uint32_t elapsed = now_ms - id(window_start_ms);
           if (elapsed >= WINDOW_MS) {
             id(window_start_ms) = now_ms;
             elapsed = 0;
+            float duty = id(boost_active) ? 1.0f : id(pid_duty);
+            id(window_on_ms) = compute_on_ms(duty);
           }
 
-          float duty = id(pid_duty);          // requested duty from PID
-          if (id(boost_active)) duty = 1.0f;  // boost overrides PID
-
-          // Convert duty to ON time in this window
-          uint32_t on_ms = (uint32_t)(duty * (float)WINDOW_MS + 0.5f);
-
-          // Enforce minimum ON pulse (if not zero)
-          if (on_ms > 0 && on_ms < MIN_ON_MS) on_ms = MIN_ON_MS;
-
-          // Clamp to window size
-          if (on_ms > WINDOW_MS) on_ms = WINDOW_MS;
-
-          // Enforce minimum OFF time (unless full ON)
-          if (on_ms < WINDOW_MS && (WINDOW_MS - on_ms) < MIN_OFF_MS) {
-            on_ms = WINDOW_MS - MIN_OFF_MS;
+          // Boost should engage immediately, without waiting for next window rollover.
+          if (id(boost_active) && id(window_on_ms) < WINDOW_MS) {
+            id(window_on_ms) = WINDOW_MS;
           }
 
-          const bool should_be_on = (on_ms > 0) && (elapsed < on_ms);
+          const bool should_be_on = (id(window_on_ms) > 0) && (elapsed < id(window_on_ms));
 
           // Apply to hardware every cycle (prevents desync)
           if (should_be_on) {
@@ -1605,7 +1633,7 @@ interval:
               thermal_tau = (-1.0 / id(th_c)) / 60.0;
             }
 
-            std::string control_src = id(control_temp_source).current_option().c_str();
+            std::string control_src = id(control_temp_source).state.c_str();
             if (control_src.empty()) control_src = "Average (Top+Head)";
 
             root["device_id"] = "${internalname}";
