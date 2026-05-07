@@ -301,7 +301,7 @@
                     <input type="hidden" name="key" value="fan_dt_sp" />
                     <label class="form-label small mb-1">{% trans "Fan dT Setpoint (degC)" %}</label>
                     <div class="input-group">
-                      <input id="diag-fan-dt-{{ d.device_id }}" name="value" type="number" class="form-control" min="1" max="25" step="0.5" value="5" />
+                      <input id="diag-fan-dt-{{ d.device_id }}" name="value" type="number" class="form-control" min="1" max="250" step="0.5" value="50" />
                       <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
                     </div>
                   </form>

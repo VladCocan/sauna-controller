@@ -17,7 +17,7 @@ NUMBER_COMMAND_SPECS = {
     "boost_window": {"min": 5.0, "max": 30.0, "step": 1.0},
     "boost_exit": {"min": 2.0, "max": 15.0, "step": 1.0},
     "max_session_min": {"min": 30.0, "max": 240.0, "step": 5.0},
-    "fan_dt_sp": {"min": 1.0, "max": 25.0, "step": 0.5},
+    "fan_dt_sp": {"min": 1.0, "max": 250.0, "step": 0.5},
 }
 
 SELECT_COMMAND_SPECS = {
