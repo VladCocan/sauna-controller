@@ -1,0 +1,514 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-10 09:14+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+#: core/templates/core/_device_card.html:9
+msgid "Last seen:"
+msgstr ""
+
+#: core/templates/core/_device_card.html:19
+msgid "ack:"
+msgstr ""
+
+#: core/templates/core/_device_card.html:27
+msgid "Status"
+msgstr "Status"
+
+#: core/templates/core/_device_card.html:32
+msgid "Settings"
+msgstr "Settings"
+
+#: core/templates/core/_device_card.html:37
+msgid "Diagnostic"
+msgstr ""
+
+#: core/templates/core/_device_card.html:52
+msgid "Heater"
+msgstr ""
+
+#: core/templates/core/_device_card.html:65
+msgid "Setpoint"
+msgstr ""
+
+#: core/templates/core/_device_card.html:72
+msgid "Temperature Top"
+msgstr ""
+
+#: core/templates/core/_device_card.html:79
+msgid "Temperature Head"
+msgstr ""
+
+#: core/templates/core/_device_card.html:86
+msgid "Temperature Under"
+msgstr ""
+
+#: core/templates/core/_device_card.html:93
+msgid "Outdoor"
+msgstr ""
+
+#: core/templates/core/_device_card.html:100
+msgid "Temperature Chart"
+msgstr ""
+
+#: core/templates/core/_device_card.html:126
+msgid "Climate Control"
+msgstr ""
+
+#: core/templates/core/_device_card.html:135
+msgid "Heater Mode"
+msgstr ""
+
+#: core/templates/core/_device_card.html:140
+#: core/templates/core/dashboard.html:59
+msgid "OFF"
+msgstr "Off"
+
+#: core/templates/core/_device_card.html:145
+msgid "HEAT"
+msgstr ""
+
+#: core/templates/core/_device_card.html:153
+msgid "Target Temperature"
+msgstr ""
+
+#: core/templates/core/_device_card.html:179
+msgid "Device Controls"
+msgstr ""
+
+#: core/templates/core/_device_card.html:192
+#: core/templates/core/dashboard.html:68
+msgid "Fan"
+msgstr ""
+
+#: core/templates/core/_device_card.html:207
+#: core/templates/core/dashboard.html:69
+msgid "Light"
+msgstr ""
+
+#: core/templates/core/_device_card.html:222
+#: core/templates/core/dashboard.html:70
+msgid "Amplifier"
+msgstr ""
+
+#: core/templates/core/_device_card.html:232
+msgid "Confirm emergency stop? Heater will be set to OFF immediately."
+msgstr ""
+
+#: core/templates/core/_device_card.html:238
+msgid "EMERGENCY STOP"
+msgstr ""
+
+#: core/templates/core/_device_card.html:257
+msgid "Config Parameters"
+msgstr ""
+
+#: core/templates/core/_device_card.html:266
+#: core/templates/core/dashboard.html:72
+msgid "Boost Window (degC)"
+msgstr ""
+
+#: core/templates/core/_device_card.html:269
+#: core/templates/core/_device_card.html:281
+#: core/templates/core/_device_card.html:293
+#: core/templates/core/_device_card.html:305
+#: core/templates/core/_device_card.html:321
+msgid "Apply"
+msgstr ""
+
+#: core/templates/core/_device_card.html:278
+#: core/templates/core/dashboard.html:73
+msgid "Boost Exit (degC)"
+msgstr ""
+
+#: core/templates/core/_device_card.html:290
+#: core/templates/core/dashboard.html:74
+msgid "Max Session (min)"
+msgstr ""
+
+#: core/templates/core/_device_card.html:302
+#: core/templates/core/dashboard.html:75
+msgid "Fan dT Setpoint (degC)"
+msgstr ""
+
+#: core/templates/core/_device_card.html:314
+#: core/templates/core/dashboard.html:76
+msgid "Control Temp Source"
+msgstr ""
+
+#: core/templates/core/_device_card.html:334
+msgid "Maintenance Actions"
+msgstr ""
+
+#: core/templates/core/_device_card.html:338
+msgid "Confirm reset for Sauna Energy?"
+msgstr ""
+
+#: core/templates/core/_device_card.html:343
+msgid "Reset Sauna Energy"
+msgstr ""
+
+#: core/templates/core/_device_card.html:346
+msgid "Confirm reset for runtime counters?"
+msgstr ""
+
+#: core/templates/core/_device_card.html:351
+msgid "Reset Runtime Counters"
+msgstr ""
+
+#: core/templates/core/_device_card.html:354
+msgid "Confirm reset for ETA calibration?"
+msgstr ""
+
+#: core/templates/core/_device_card.html:359
+msgid "Reset ETA Calibration"
+msgstr ""
+
+#: core/templates/core/_device_card.html:362
+msgid "Confirm reset for thermal model?"
+msgstr ""
+
+#: core/templates/core/_device_card.html:367
+msgid "Reset Thermal Model"
+msgstr ""
+
+#: core/templates/core/_device_card.html:370
+msgid "Confirm controller restart? Device will disconnect briefly."
+msgstr ""
+
+#: core/templates/core/_device_card.html:375
+msgid "Restart Controller"
+msgstr ""
+
+#: core/templates/core/_device_card.html:384
+msgid "Live Diagnostics"
+msgstr ""
+
+#: core/templates/core/_device_card.html:385
+msgid "Loading..."
+msgstr ""
+
+#: core/templates/core/_device_card.html:391
+msgid "Pending Commands"
+msgstr ""
+
+#: core/templates/core/_device_card.html:398
+msgid "Device Information"
+msgstr ""
+
+#: core/templates/core/_device_card.html:400
+msgid "Device ID:"
+msgstr ""
+
+#: core/templates/core/_device_card.html:401
+msgid "Owner:"
+msgstr ""
+
+#: core/templates/core/_device_card.html:402
+msgid "Last ACK ID:"
+msgstr ""
+
+#: core/templates/core/_device_card.html:403
+msgid "Status:"
+msgstr ""
+
+#: core/templates/core/_navbar.html:20
+msgid "Installed"
+msgstr ""
+
+#: core/templates/core/_navbar.html:24
+msgid "Install App"
+msgstr ""
+
+#: core/templates/core/_navbar.html:30
+msgid "Logout"
+msgstr ""
+
+#: core/templates/core/_navbar.html:34
+msgid "Admin"
+msgstr ""
+
+#: core/templates/core/_toasts.html:7
+msgid "Close"
+msgstr ""
+
+#: core/templates/core/dashboard.html:16
+msgid "You have no devices. Create one in Admin -> Core -> Devices."
+msgstr ""
+
+#: core/templates/core/dashboard.html:23
+msgid "Device:"
+msgstr ""
+
+#: core/templates/core/dashboard.html:48
+msgid "ONLINE"
+msgstr "Online"
+
+#: core/templates/core/dashboard.html:49
+msgid "OFFLINE"
+msgstr "Offline"
+
+#: core/templates/core/dashboard.html:50
+msgid "SAUNA ON"
+msgstr "Sauna On"
+
+#: core/templates/core/dashboard.html:51
+msgid "SAUNA OFF"
+msgstr "Sauna Off"
+
+#: core/templates/core/dashboard.html:52
+msgid "Light on"
+msgstr ""
+
+#: core/templates/core/dashboard.html:53
+msgid "Light off"
+msgstr ""
+
+#: core/templates/core/dashboard.html:54
+msgid "Fan on"
+msgstr ""
+
+#: core/templates/core/dashboard.html:55
+msgid "Fan off"
+msgstr ""
+
+#: core/templates/core/dashboard.html:56
+msgid "Amplifier on"
+msgstr ""
+
+#: core/templates/core/dashboard.html:57
+msgid "Amplifier off"
+msgstr ""
+
+#: core/templates/core/dashboard.html:58
+msgid "ON"
+msgstr "On"
+
+#: core/templates/core/dashboard.html:60
+msgid "Sending..."
+msgstr ""
+
+#: core/templates/core/dashboard.html:61
+msgid "Unavailable"
+msgstr ""
+
+#: core/templates/core/dashboard.html:62
+msgid "Controls"
+msgstr ""
+
+#: core/templates/core/dashboard.html:63
+msgid "Configuration"
+msgstr ""
+
+#: core/templates/core/dashboard.html:64
+msgid "Sensors"
+msgstr ""
+
+#: core/templates/core/dashboard.html:65
+msgid "Models & Runtime"
+msgstr ""
+
+#: core/templates/core/dashboard.html:66
+msgid "Sauna Climate"
+msgstr ""
+
+#: core/templates/core/dashboard.html:67
+msgid "Setpoint (degC)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:71
+msgid "Contactor Active"
+msgstr ""
+
+#: core/templates/core/dashboard.html:77
+msgid "Control Temp Source Active"
+msgstr ""
+
+#: core/templates/core/dashboard.html:78
+msgid "Temp Top"
+msgstr ""
+
+#: core/templates/core/dashboard.html:79
+msgid "Temp Head"
+msgstr ""
+
+#: core/templates/core/dashboard.html:80
+msgid "Temp Under"
+msgstr ""
+
+#: core/templates/core/dashboard.html:81
+msgid "Temp Outdoor"
+msgstr ""
+
+#: core/templates/core/dashboard.html:82
+msgid "Temp Control"
+msgstr ""
+
+#: core/templates/core/dashboard.html:83
+msgid "Strat Delta"
+msgstr ""
+
+#: core/templates/core/dashboard.html:84
+msgid "Power (W)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:85
+msgid "Heat Loss (W)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:86
+msgid "Heat Loss (kW)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:87
+msgid "Heating Headroom (kW)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:88
+msgid "Sensor Fault"
+msgstr ""
+
+#: core/templates/core/dashboard.html:89
+msgid "Control Temp Valid"
+msgstr ""
+
+#: core/templates/core/dashboard.html:90
+msgid "ETA A"
+msgstr ""
+
+#: core/templates/core/dashboard.html:91
+msgid "ETA B"
+msgstr ""
+
+#: core/templates/core/dashboard.html:92
+msgid "ETA Auto (min)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:93
+msgid "ETA Pred (min)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:94
+msgid "ETA RMSE"
+msgstr ""
+
+#: core/templates/core/dashboard.html:95
+msgid "ETA Confidence"
+msgstr ""
+
+#: core/templates/core/dashboard.html:96
+msgid "ETA Pred Rate"
+msgstr ""
+
+#: core/templates/core/dashboard.html:97
+msgid "ETA Samples"
+msgstr ""
+
+#: core/templates/core/dashboard.html:98
+msgid "ETA Learning Active"
+msgstr ""
+
+#: core/templates/core/dashboard.html:99
+msgid "Thermal Samples"
+msgstr ""
+
+#: core/templates/core/dashboard.html:100
+msgid "Thermal UA"
+msgstr ""
+
+#: core/templates/core/dashboard.html:101
+msgid "Thermal C"
+msgstr ""
+
+#: core/templates/core/dashboard.html:102
+msgid "Thermal Tau"
+msgstr ""
+
+#: core/templates/core/dashboard.html:103
+msgid "Energy Wh"
+msgstr ""
+
+#: core/templates/core/dashboard.html:104
+msgid "Energy kWh"
+msgstr ""
+
+#: core/templates/core/dashboard.html:105
+msgid "Oven Runtime s"
+msgstr ""
+
+#: core/templates/core/dashboard.html:106
+msgid "Fan Runtime s"
+msgstr ""
+
+#: core/templates/core/dashboard.html:107
+msgid "Light Runtime s"
+msgstr ""
+
+#: core/templates/core/dashboard.html:108
+msgid "Amp Runtime s"
+msgstr ""
+
+#: core/templates/core/dashboard.html:109
+msgid "Boost Active"
+msgstr ""
+
+#: core/templates/core/dashboard.html:110
+msgid "Heater Power pct"
+msgstr ""
+
+#: core/templates/core/dashboard.html:111
+msgid "Uptime seconds"
+msgstr ""
+
+#: core/templates/core/dashboard.html:112
+msgid "Are you sure?"
+msgstr ""
+
+#: core/templates/core/dashboard.html:113
+msgid "Command failed (HTTP __STATUS__)"
+msgstr ""
+
+#: core/templates/core/dashboard.html:114
+msgid "Command queued"
+msgstr ""
+
+#: core/templates/core/dashboard.html:115
+msgid "Network error"
+msgstr ""
+
+#: templates/registration/login.html:8 templates/registration/login.html:50
+msgid "Login"
+msgstr ""
+
+#: templates/registration/login.html:26
+msgid "Sauna Login"
+msgstr ""
+
+#: templates/registration/login.html:30
+msgid "Invalid username/password."
+msgstr ""
+
+#: templates/registration/login.html:38
+msgid "Username"
+msgstr ""
+
+#: templates/registration/login.html:43
+msgid "Password"
+msgstr ""
+
+#: templates/registration/login.html:55
+msgid "Admin:"
+msgstr ""

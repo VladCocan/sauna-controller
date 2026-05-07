@@ -1,0 +1,122 @@
+{% load dict_extras static i18n %}
+{% get_current_language as CURRENT_LANG %}
+<!doctype html>
+<html lang="{{ CURRENT_LANG }}">
+  <head>
+    {% include 'core/_head.html' %}
+  </head>
+
+  <body class="bg-light">
+    {% include 'core/_pwa_script.html' %}
+    {% include 'core/_navbar.html' %}
+
+    <div class="container py-3">
+      {% if not devices %}
+        <div class="alert alert-warning">
+          {% trans "You have no devices. Create one in Admin -> Core -> Devices." %}
+        </div>
+      {% else %}
+        {% if devices|length > 1 %}
+        <div class="mb-3">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label for="device-select" class="form-label mb-0">
+              {% trans "Device:" %}
+            </label>
+            <select id="device-select" class="form-select" style="max-width: 300px;">
+              {% for d in devices %}
+                <option value="{{ d.device_id }}">{{ d.device_id }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endif %}
+        
+        <div id="devices-container">
+          {% for d in devices %}
+            <div class="device-view" data-device="{{ d.device_id }}" style="display: none;">
+              {% include 'core/_device_card.html' with d=d latest=latest %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    {% include 'core/_toasts.html' %}
+
+    <script>
+      window.SAUNA_I18N = {
+        online: "{% trans 'ONLINE'|escapejs %}",
+        offline: "{% trans 'OFFLINE'|escapejs %}",
+        saunaOn: "{% trans 'SAUNA ON'|escapejs %}",
+        saunaOff: "{% trans 'SAUNA OFF'|escapejs %}",
+        lightOnLabel: "{% trans 'Light on'|escapejs %}",
+        lightOffLabel: "{% trans 'Light off'|escapejs %}",
+        fanOnLabel: "{% trans 'Fan on'|escapejs %}",
+        fanOffLabel: "{% trans 'Fan off'|escapejs %}",
+        ampOnLabel: "{% trans 'Amplifier on'|escapejs %}",
+        ampOffLabel: "{% trans 'Amplifier off'|escapejs %}",
+        on: "{% trans 'ON'|escapejs %}",
+        off: "{% trans 'OFF'|escapejs %}",
+        sending: "{% trans 'Sending...'|escapejs %}",
+        unavailable: "{% trans 'Unavailable'|escapejs %}",
+        controlsSection: "{% trans 'Controls'|escapejs %}",
+        configurationSection: "{% trans 'Configuration'|escapejs %}",
+        sensorsSection: "{% trans 'Sensors'|escapejs %}",
+        modelsRuntimeSection: "{% trans 'Models & Runtime'|escapejs %}",
+        saunaClimate: "{% trans 'Sauna Climate'|escapejs %}",
+        setpointDegC: "{% trans 'Setpoint (degC)'|escapejs %}",
+        fan: "{% trans 'Fan'|escapejs %}",
+        light: "{% trans 'Light'|escapejs %}",
+        amplifier: "{% trans 'Amplifier'|escapejs %}",
+        contactorActive: "{% trans 'Contactor Active'|escapejs %}",
+        boostWindowDegC: "{% trans 'Boost Window (degC)'|escapejs %}",
+        boostExitDegC: "{% trans 'Boost Exit (degC)'|escapejs %}",
+        maxSessionMin: "{% trans 'Max Session (min)'|escapejs %}",
+        fanDtSetpointDegC: "{% trans 'Fan dT Setpoint (degC)'|escapejs %}",
+        controlTempSource: "{% trans 'Control Temp Source'|escapejs %}",
+        controlTempSourceActive: "{% trans 'Control Temp Source Active'|escapejs %}",
+        tempTop: "{% trans 'Temp Top'|escapejs %}",
+        tempHead: "{% trans 'Temp Head'|escapejs %}",
+        tempUnder: "{% trans 'Temp Under'|escapejs %}",
+        tempOutdoor: "{% trans 'Temp Outdoor'|escapejs %}",
+        tempControl: "{% trans 'Temp Control'|escapejs %}",
+        stratDelta: "{% trans 'Strat Delta'|escapejs %}",
+        powerW: "{% trans 'Power (W)'|escapejs %}",
+        heatLossW: "{% trans 'Heat Loss (W)'|escapejs %}",
+        heatLossKw: "{% trans 'Heat Loss (kW)'|escapejs %}",
+        heatingHeadroomKw: "{% trans 'Heating Headroom (kW)'|escapejs %}",
+        sensorFault: "{% trans 'Sensor Fault'|escapejs %}",
+        controlTempValid: "{% trans 'Control Temp Valid'|escapejs %}",
+        etaA: "{% trans 'ETA A'|escapejs %}",
+        etaB: "{% trans 'ETA B'|escapejs %}",
+        etaAutoMin: "{% trans 'ETA Auto (min)'|escapejs %}",
+        etaPredMin: "{% trans 'ETA Pred (min)'|escapejs %}",
+        etaRmse: "{% trans 'ETA RMSE'|escapejs %}",
+        etaConfidence: "{% trans 'ETA Confidence'|escapejs %}",
+        etaPredRate: "{% trans 'ETA Pred Rate'|escapejs %}",
+        etaSamples: "{% trans 'ETA Samples'|escapejs %}",
+        etaLearningActive: "{% trans 'ETA Learning Active'|escapejs %}",
+        thermalSamples: "{% trans 'Thermal Samples'|escapejs %}",
+        thermalUa: "{% trans 'Thermal UA'|escapejs %}",
+        thermalC: "{% trans 'Thermal C'|escapejs %}",
+        thermalTau: "{% trans 'Thermal Tau'|escapejs %}",
+        energyWh: "{% trans 'Energy Wh'|escapejs %}",
+        energyKwh: "{% trans 'Energy kWh'|escapejs %}",
+        ovenRuntimeS: "{% trans 'Oven Runtime s'|escapejs %}",
+        fanRuntimeS: "{% trans 'Fan Runtime s'|escapejs %}",
+        lightRuntimeS: "{% trans 'Light Runtime s'|escapejs %}",
+        ampRuntimeS: "{% trans 'Amp Runtime s'|escapejs %}",
+        boostActive: "{% trans 'Boost Active'|escapejs %}",
+        heaterPowerPct: "{% trans 'Heater Power pct'|escapejs %}",
+        uptimeSeconds: "{% trans 'Uptime seconds'|escapejs %}",
+        areYouSure: "{% trans 'Are you sure?'|escapejs %}",
+        commandFailed: "{% trans 'Command failed (HTTP __STATUS__)'|escapejs %}",
+        commandQueued: "{% trans 'Command queued'|escapejs %}",
+        networkError: "{% trans 'Network error'|escapejs %}"
+      };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{% static 'core/dashboard.js' %}"></script>
+  </body>
+</html>

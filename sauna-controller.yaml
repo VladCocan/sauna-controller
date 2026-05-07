@@ -1,0 +1,1669 @@
+# ================================
+# Substitutions / build-time constants
+# ================================
+substitutions:
+  devicename: "Sauna Controller"
+  internalname: "sauna-controller"
+  power_of_sauna_oven: "6"             # Total installed power (kW), informational only
+  mqtt_host: !secret mqtt_host
+  mqtt_port: !secret mqtt_port
+  mqtt_username: !secret mqtt_username
+  mqtt_password: !secret mqtt_password
+  mqtt_topic_base: "sauna/${internalname}"
+
+  # Contactor-friendly time-base for windowed control
+  contactor_window_s: "360"            # Window length (s) used to approximate PID power with ON/OFF
+  contactor_min_on_s: "120"             # Minimum ON time (s) inside a window
+  contactor_min_off_s: "150"            # Minimum OFF time (s) inside a window
+
+
+# ================================
+# ESPHome core
+# ================================
+esphome:
+  name: "${internalname}"
+  friendly_name: "${devicename}"
+  min_version: 2025.7.5
+  name_add_mac_suffix: false
+
+  # On boot: force climate OFF. Outputs are kept OFF until sensors are valid.
+  on_boot:
+    priority: 200
+    then:
+      - logger.log: "Boot: forcing sauna climate OFF"
+      - switch.turn_off: sauna_contactor_hw
+      - output.turn_off: destrat_output
+      - output.turn_off: light_output
+      - output.turn_off: amp_output
+      - climate.control:
+          id: sauna_climate
+          mode: 'OFF'
+      - lambda: |-
+          id(boost_active) = false;
+          id(session_start) = 0;
+          id(boost_start) = 0;
+
+
+# ================================
+# MCU / framework
+# ================================
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+# PSRAM configuration (ESP32-S3-WROOM-1-N16R8)
+psram:
+  mode: octal
+  speed: 80MHz
+
+# Logging
+logger:
+  level: INFO
+
+# Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+  reboot_timeout: 0s
+
+# OTA updates
+ota:
+  - platform: esphome
+    id: my_ota
+    password: !secret ota_password
+
+# Wi-Fi / networking
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  manual_ip:
+    static_ip: 192.168.1.36
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: 8.8.8.8
+    dns2: 8.8.4.4
+
+  ap:
+    ssid: "Sauna Fallback Hotspot"
+    password: "JS8pluyHIW5q"
+
+  reboot_timeout: 0s
+  power_save_mode: none
+
+
+# Captive portal for fallback AP
+captive_portal:
+
+
+# ================================
+# Message encoding
+# ================================
+json:
+
+mqtt:
+  broker: ${mqtt_host}
+  port: ${mqtt_port}
+  username: ${mqtt_username}
+  password: ${mqtt_password}
+  certificate_authority: !secret mqtt_ca_cert
+  topic_prefix: ${mqtt_topic_base}
+  discovery: false
+  log_topic:
+    topic: ${mqtt_topic_base}/log
+    level: WARN
+  birth_message:
+    topic: ${mqtt_topic_base}/state
+    payload: online
+  will_message:
+    topic: ${mqtt_topic_base}/state
+    payload: offline
+  on_json_message:
+    - topic: ${mqtt_topic_base}/cmd
+      then:
+        - lambda: |-
+            int cmd_id = x["cmd_id"] | 0;
+            const char *type = x["type"] | "";
+            JsonObjectConst payload = x["payload"].as<JsonObjectConst>();
+
+            if (cmd_id > 0 && cmd_id <= id(last_ack_id)) {
+              // Ignore duplicates when QoS retries or reconnect delivery occurs.
+              return;
+            }
+
+            if (strcmp(type, "set_climate") == 0) {
+              auto call = id(sauna_climate).make_call();
+
+              if (!payload["mode"].isNull()) {
+                const char *mode = payload["mode"] | "OFF";
+                if (strcmp(mode, "HEAT") == 0) {
+                  call.set_mode(climate::CLIMATE_MODE_HEAT);
+                } else {
+                  call.set_mode(climate::CLIMATE_MODE_OFF);
+                }
+              }
+
+              if (!payload["setpoint_c"].isNull()) {
+                call.set_target_temperature((float) payload["setpoint_c"].as<float>());
+              }
+
+              call.perform();
+            } else if (strcmp(type, "set_fan") == 0) {
+              bool destrat = payload["destrat"] | false;
+              if (destrat) id(fan_destrat).turn_on();
+              else id(fan_destrat).turn_off();
+            } else if (strcmp(type, "set_light") == 0) {
+              bool on = payload["on"] | false;
+              auto lcall = on ? id(sauna_light).turn_on() : id(sauna_light).turn_off();
+              lcall.perform();
+            } else if (strcmp(type, "set_amp") == 0) {
+              bool on = payload["on"] | false;
+              if (on) id(sauna_amp).turn_on();
+              else id(sauna_amp).turn_off();
+            } else if (strcmp(type, "set_number") == 0) {
+              const char *name = payload["name"] | "";
+              if (payload["value"].isNull()) {
+                ESP_LOGW("mqtt", "set_number without value");
+                return;
+              }
+
+              float value = payload["value"].as<float>();
+
+              if (strcmp(name, "boost_window") == 0) {
+                auto call = id(boost_window).make_call();
+                call.set_value(value);
+                call.perform();
+              } else if (strcmp(name, "boost_exit") == 0) {
+                auto call = id(boost_exit).make_call();
+                call.set_value(value);
+                call.perform();
+              } else if (strcmp(name, "max_session_min") == 0) {
+                auto call = id(max_session_min).make_call();
+                call.set_value(value);
+                call.perform();
+              } else if (strcmp(name, "fan_dt_sp") == 0) {
+                auto call = id(fan_dt_sp).make_call();
+                call.set_value(value);
+                call.perform();
+              } else {
+                ESP_LOGW("mqtt", "Unknown set_number target: %s", name);
+                return;
+              }
+            } else if (strcmp(type, "set_select") == 0) {
+              const char *name = payload["name"] | "";
+              const char *option = payload["option"] | "";
+
+              if (strcmp(name, "control_temp_source") == 0) {
+                auto call = id(control_temp_source).make_call();
+                call.set_option(option);
+                call.perform();
+              } else {
+                ESP_LOGW("mqtt", "Unknown set_select target: %s", name);
+                return;
+              }
+            } else if (strcmp(type, "press_button") == 0) {
+              const char *name = payload["name"] | "";
+
+              if (strcmp(name, "restart") == 0) {
+                id(restart_controller_btn).press();
+              } else if (strcmp(name, "reset_energy") == 0) {
+                id(reset_energy_btn).press();
+              } else if (strcmp(name, "reset_runtime") == 0) {
+                id(reset_runtime_btn).press();
+              } else if (strcmp(name, "reset_eta") == 0) {
+                id(reset_eta_btn).press();
+              } else if (strcmp(name, "reset_thermal") == 0) {
+                id(reset_thermal_btn).press();
+              } else {
+                ESP_LOGW("mqtt", "Unknown press_button target: %s", name);
+                return;
+              }
+            } else {
+              ESP_LOGW("mqtt", "Unknown command type: %s", type);
+              return;
+            }
+
+            if (cmd_id > id(last_ack_id)) {
+              id(last_ack_id) = cmd_id;
+            }
+
+            ESP_LOGI("mqtt", "Command applied (id=%d, type=%s)", cmd_id, type);
+
+
+# ================================
+# 1-Wire buses (separate GPIOs)
+# ================================
+one_wire:
+  - platform: gpio
+    pin: GPIO4
+    id: ow_top
+
+  - platform: gpio
+    pin: GPIO5
+    id: ow_head
+
+  - platform: gpio
+    pin: GPIO6
+    id: ow_under
+
+  - platform: gpio
+    pin: GPIO7
+    id: ow_outdoor
+
+# ================================
+# Outputs (GPIO / PWM)
+# ================================
+output:
+  - platform: gpio
+    id: contactor_gpio
+    pin: GPIO15
+    inverted: true
+
+  - platform: gpio
+    id: destrat_output
+    pin: GPIO16
+    inverted: true
+
+  - platform: gpio
+    id: light_output
+    pin: GPIO17
+    inverted: true
+
+  - platform: gpio
+    id: amp_output
+    pin: GPIO18
+    inverted: true
+
+  - platform: template
+    id: pid_heat_output
+    type: float
+    write_action:
+      - lambda: |-
+          // Store PID duty request (0..1). Windowed contactor logic uses this.
+          id(pid_duty) = state;
+
+
+# ================================
+# Sensors
+# ================================
+sensor:
+
+  # Primary measurements
+  - platform: dallas_temp
+    one_wire_id: ow_top
+    id: t_top
+    name: "Sauna Temp Top"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    state_class: measurement
+    update_interval: 2s
+
+  - platform: dallas_temp
+    one_wire_id: ow_head
+    id: t_head
+    name: "Sauna Temp Head"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    state_class: measurement
+    update_interval: 2s
+
+
+  - platform: dallas_temp
+    one_wire_id: ow_under
+    id: t_under
+    name: "Sauna Temp Under Bench"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    state_class: measurement
+    update_interval: 2s
+
+  - platform: dallas_temp
+    one_wire_id: ow_outdoor
+    id: t_outdoor
+    name: "Sauna Temp Outdoor"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    device_class: temperature
+    state_class: measurement
+    update_interval: 10s
+
+  # Derived temperatures
+  - platform: template
+    id: t_control
+    name: "Sauna Control Temp"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      // ESPHome 2025.9+: current_option() returns a string-like object
+      std::string mode = id(control_temp_source).current_option().c_str();
+      if (mode.empty()) mode = "Average (Top+Head)";
+
+      float top  = id(t_top).state;
+      float head = id(t_head).state;
+
+      if (mode == "Top") {
+        if (isnan(top)) return NAN;
+        return top;
+      }
+
+      if (mode == "Head") {
+        if (isnan(head)) return NAN;
+        return head;
+      }
+
+      // Default: Average (Top+Head)
+      if (isnan(top) || isnan(head)) return NAN;
+      return (top + head) / 2.0f;
+
+  - platform: template
+    id: d_strat
+    name: "Sauna Stratification Delta"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      if (isnan(id(t_top).state) || isnan(id(t_under).state))
+        return NAN;
+      return id(t_top).state - id(t_under).state;
+
+  # Control diagnostics
+  - platform: template
+    name: "Sauna PID Duty"
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: |-
+      return id(pid_duty) * 100.0f;
+
+  # Energy estimation (no physical power meter)
+  - platform: template
+    id: sauna_power_w
+    name: "Sauna Power"
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      return id(contactor_on) ? (float)(${power_of_sauna_oven}) * 1000.0f : 0.0f;
+
+  - platform: integration
+    name: "Sauna Energy (Wh)"
+    id: sauna_energy_wh
+    entity_category: diagnostic
+    sensor: sauna_power_w
+    time_unit: h
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Sauna Energy"
+    id: sauna_energy_kwh
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 3
+    update_interval: 5s
+    lambda: |-
+      return id(sauna_energy_wh).state / 1000.0f;
+
+  # Runtime counters
+  - platform: template
+    name: "Sauna Oven Runtime"
+    id: oven_runtime_h
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      return id(oven_runtime_s) / 3600.0f;
+
+  - platform: template
+    name: "Sauna Fan Runtime"
+    id: fan_runtime_h
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      return id(fan_runtime_s) / 3600.0f;
+
+  - platform: template
+    name: "Sauna Light Runtime"
+    id: light_runtime_h
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      return id(light_runtime_s) / 3600.0f;
+
+  - platform: template
+    name: "Sauna Amplifier Runtime"
+    id: amp_runtime_h
+    unit_of_measurement: "h"
+    device_class: duration
+    state_class: total_increasing
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      return id(amp_runtime_s) / 3600.0f;
+
+  # ETA model (auto-calibrated)
+  - platform: template
+    name: "ETA Model A (auto)"
+    id: eta_A_sensor
+    entity_category: diagnostic
+    unit_of_measurement: "°C/min"
+    accuracy_decimals: 3
+    update_interval: 10s
+    lambda: |-
+      return id(eta_A_est);
+
+  - platform: template
+    name: "ETA Model B (auto)"
+    id: eta_B_sensor
+    entity_category: diagnostic
+    unit_of_measurement: "°C/min/°C"
+    accuracy_decimals: 4
+    update_interval: 10s
+    lambda: |-
+      return id(eta_B_est);
+
+  - platform: template
+    name: "Sauna ETA to Setpoint (auto)"
+    id: sauna_eta_min
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (id(sauna_climate).mode != climate::CLIMATE_MODE_HEAT) return NAN;
+      if (isnan(id(t_control).state) || isnan(id(t_outdoor).state)) return NAN;
+
+      float sp = id(sauna_climate).target_temperature;
+      float t  = id(t_control).state;
+      float Tout = id(t_outdoor).state;
+
+      float remaining = sp - t;
+      if (remaining <= 0.0f) return 0.0f;
+
+      float rate = id(eta_A_est) + id(eta_B_est) * Tout;
+      if (rate < 0.05f) return NAN;
+
+      float eta = remaining / rate;
+      if (eta > 300.0f) eta = 300.0f;
+      return eta;
+
+  - platform: template
+    name: "ETA Samples"
+    id: eta_samples
+    entity_category: diagnostic
+    unit_of_measurement: "samples"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      return (float) id(eta_n);
+
+  - platform: template
+    name: "ETA Fit RMSE"
+    id: eta_rmse
+    entity_category: diagnostic
+    unit_of_measurement: "°C/min"
+    accuracy_decimals: 3
+    update_interval: 10s
+    lambda: |-
+      uint32_t n_u = id(eta_n);
+      if (n_u < 30) return NAN;
+
+      float n = (float)n_u;
+      float Sx = id(eta_Sx);
+      float Sy = id(eta_Sy);
+      float Sxx = id(eta_Sxx);
+      float Sxy = id(eta_Sxy);
+      float Syy = id(eta_Syy);
+
+      float den = (n * Sxx - Sx * Sx);
+      if (fabsf(den) < 1e-6f) return NAN;
+
+      // Least-squares A,B
+      float B = (n * Sxy - Sx * Sy) / den;
+      float A = (Sy - B * Sx) / n;
+
+      // SSE = Σ(y^2) - 2AΣy - 2BΣxy + A^2 n + 2AB Σx + B^2 Σ(x^2)
+      float SSE = Syy
+                - 2.0f * A * Sy
+                - 2.0f * B * Sxy
+                + (A * A) * n
+                + 2.0f * A * B * Sx
+                + (B * B) * Sxx;
+
+      if (SSE < 0.0f) SSE = 0.0f;
+
+      float dof = n - 2.0f;
+      if (dof <= 1.0f) return NAN;
+
+      float rmse = sqrtf(SSE / dof);
+      return rmse;
+
+  - platform: template
+    name: "ETA Confidence"
+    id: eta_confidence
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      uint32_t n_u = id(eta_n);
+      if (n_u < 10) return 0;
+
+      // Component 1: data sufficiency (0..1), saturates around 300 samples
+      float n = (float)n_u;
+      float data_score = n / 300.0f;
+      if (data_score > 1.0f) data_score = 1.0f;
+
+      // Component 2: fit quality from RMSE (0..1)
+      float rmse = id(eta_rmse).state;
+      if (isnan(rmse)) rmse = 1.0f;
+
+      // Map RMSE to score: <=0.10 °C/min => great, >=0.50 => poor
+      float fit_score;
+      if (rmse <= 0.10f) fit_score = 1.0f;
+      else if (rmse >= 0.50f) fit_score = 0.0f;
+      else fit_score = 1.0f - (rmse - 0.10f) / (0.50f - 0.10f);
+
+      float conf = (0.55f * data_score + 0.45f * fit_score) * 100.0f;
+      if (conf < 0.0f) conf = 0.0f;
+      if (conf > 100.0f) conf = 100.0f;
+      return conf;
+
+  - platform: template
+    name: "ETA Predicted Heat Rate"
+    id: eta_rate_pred
+    entity_category: diagnostic
+    unit_of_measurement: "°C/min"
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      if (isnan(id(t_outdoor).state)) return NAN;
+      float Tout = id(t_outdoor).state;
+      float rate = id(eta_A_est) + id(eta_B_est) * Tout;
+
+      // clamp to sane limits
+      if (rate < 0.05f) rate = 0.05f;
+      if (rate > 5.00f) rate = 5.00f;
+      return rate;
+
+  - platform: template
+    name: "Sauna ETA to Setpoint (Predicted)"
+    id: sauna_eta_min_pred
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (isnan(id(t_control).state) || isnan(id(t_outdoor).state)) return NAN;
+
+      float sp = id(sauna_climate).target_temperature;  // setpoint from HA even if climate is OFF
+      float t  = id(t_control).state;
+      float Tout = id(t_outdoor).state;
+
+      float remaining = sp - t;
+      if (remaining <= 0.0f) return 0.0f;
+
+      float rate = id(eta_A_est) + id(eta_B_est) * Tout;
+      if (rate < 0.05f) return NAN;
+
+      float eta = remaining / rate;
+      if (eta > 300.0f) eta = 300.0f;
+      return eta;
+
+  - platform: template
+    name: "ETA Learning Active"
+    entity_category: diagnostic
+    update_interval: 2s
+    lambda: |-
+      return (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
+              !isnan(id(t_control).state) &&
+              !isnan(id(t_outdoor).state) &&
+              (id(pid_duty) > 0.05f || id(boost_active))) ? 1 : 0;
+
+  # Cabin thermal model (online identification)
+  - platform: template
+    name: "Thermal Model Samples"
+    entity_category: diagnostic
+    unit_of_measurement: "samples"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      return (float)id(th_n);
+
+  - platform: template
+    name: "Sauna UA (Loss Coefficient)"
+    entity_category: diagnostic
+    unit_of_measurement: "W/°C"
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      // UA = -c/a
+      if (id(th_a) <= 0.0) return NAN;
+      double UA = (-id(th_c)) / id(th_a);
+      if (UA < 0.0) return NAN;
+      return (float)UA;
+
+  - platform: template
+    name: "Sauna C (Thermal Capacity)"
+    entity_category: diagnostic
+    unit_of_measurement: "kJ/°C"
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      // C = 1/a  (J/°C) -> kJ/°C
+      if (id(th_a) <= 0.0) return NAN;
+      double Cj = 1.0 / id(th_a);
+      if (Cj <= 0.0) return NAN;
+      return (float)(Cj / 1000.0);
+
+  - platform: template
+    name: "Sauna Tau (Time Constant)"
+    entity_category: diagnostic
+    unit_of_measurement: "min"
+    accuracy_decimals: 1
+    update_interval: 10s
+    lambda: |-
+      // tau = C/UA = -1/c  (sec) -> min
+      if (id(th_c) >= -1e-9) return NAN;  // c must be negative
+      double tau_s = -1.0 / id(th_c);
+      return (float)(tau_s / 60.0);
+
+  # Estimated heat losses (from UA and ΔT)
+  - platform: template
+    name: "Sauna Heat Loss"
+    id: sauna_heat_loss_w
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      if (isnan(id(t_control).state) || isnan(id(t_outdoor).state)) return NAN;
+      if (id(th_a) <= 0.0) return NAN;
+
+      // UA = -c/a  [W/°C]
+      double UA = (-id(th_c)) / id(th_a);
+      if (UA < 0.0) return NAN;
+
+      double dT = (double)(id(t_control).state - id(t_outdoor).state);  // °C
+      if (dT < 0.0) dT = 0.0;
+
+      double Ploss = UA * dT;  // W
+      if (Ploss < 0.0) return NAN;
+      return (float)Ploss;
+
+  - platform: template
+    name: "Sauna Heat Loss (kW)"
+    id: sauna_heat_loss_kw
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      if (isnan(id(sauna_heat_loss_w).state)) return NAN;
+      return id(sauna_heat_loss_w).state / 1000.0f;
+
+  - platform: template
+    name: "Sauna Heating Headroom (kW)"
+    id: sauna_heating_headroom_kw
+    unit_of_measurement: "kW"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 10s
+    lambda: |-
+      if (isnan(id(sauna_heat_loss_w).state)) return NAN;
+      float headroom_w = (float)(${power_of_sauna_oven}) * 1000.0f - id(sauna_heat_loss_w).state;
+      return headroom_w / 1000.0f;
+
+  - platform: template
+    name: "Sauna Control Temp Valid"
+    id: control_temp_valid
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 2s
+    lambda: |-
+      std::string mode = id(control_temp_source).current_option().c_str();
+      if (mode.empty()) mode = "Average (Top+Head)";
+
+      float top  = id(t_top).state;
+      float head = id(t_head).state;
+
+      if (mode == "Top")  return isnan(top)  ? 0.0f : 1.0f;
+      if (mode == "Head") return isnan(head) ? 0.0f : 1.0f;
+
+      return (isnan(top) || isnan(head)) ? 0.0f : 1.0f;
+
+binary_sensor:
+  - platform: template
+    name: "Sauna Contactor Active"
+    id: sauna_contactor_active
+    device_class: power
+    lambda: |-
+      return id(contactor_on);
+
+  - platform: template
+    name: "Sauna Sensor Fault"
+    id: sauna_sensor_fault
+    device_class: problem
+    entity_category: diagnostic
+    lambda: |-
+      return id(sensor_fault_active);
+
+text_sensor:
+  - platform: template
+    name: "Sauna Control Temp Source (Active)"
+    id: control_temp_source_active
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: |-
+      std::string mode = id(control_temp_source).current_option().c_str();
+      if (mode.empty()) mode = "Average (Top+Head)";
+      return mode;
+
+
+# ================================
+# User parameters (HA: entity_category=config)
+# ================================
+number:
+  - platform: template
+    name: "Sauna Boost Window (°C)"
+    id: boost_window
+    entity_category: config
+    min_value: 5
+    max_value: 30
+    step: 1
+    initial_value: 15
+    optimistic: true
+
+  - platform: template
+    name: "Sauna Boost Exit (°C)"
+    id: boost_exit
+    entity_category: config
+    min_value: 2
+    max_value: 15
+    step: 1
+    initial_value: 5
+    optimistic: true
+
+  - platform: template
+    name: "Sauna Max Session (min)"
+    id: max_session_min
+    entity_category: config
+    min_value: 30
+    max_value: 240
+    step: 5
+    initial_value: 180
+    optimistic: true
+
+  - platform: template
+    name: "Sauna Fan dT Setpoint (°C)"
+    id: fan_dt_sp
+    entity_category: config
+    min_value: 1
+    max_value: 250
+    step: 0.5
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+
+select:
+  - platform: template
+    name: "Sauna Control Temp Source"
+    id: control_temp_source
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    options:
+      - "Average (Top+Head)"
+      - "Top"
+      - "Head"
+    initial_option: "Average (Top+Head)"
+
+
+
+
+
+# Switch entities
+switch:
+  # Expose the heater contactor as a HA switch (drives the GPIO output above)
+  - platform: output
+    name: "Sauna Contactor"
+    id: sauna_contactor_hw
+    output: contactor_gpio
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+  - platform: output
+    name: "Sauna Destratification Fan"
+    id: fan_destrat
+    output: destrat_output
+    restore_mode: ALWAYS_OFF
+
+  - platform: output
+    name: "Sauna Amplifier Power"
+    id: sauna_amp
+    output: amp_output
+    restore_mode: ALWAYS_OFF
+
+
+# Light entity
+light:
+  - platform: binary
+    id: sauna_light
+    name: "Sauna Light"
+    output: light_output
+    restore_mode: ALWAYS_OFF
+
+
+# Maintenance / reset buttons (HA: entity_category=diagnostic)
+button:
+  - platform: restart
+    id: restart_controller_btn
+    name: "Sauna Restart"
+
+  - platform: template
+    id: reset_energy_btn
+    name: "Reset Sauna Energy"
+    entity_category: diagnostic
+    on_press:
+      - sensor.integration.reset: sauna_energy_wh
+
+  - platform: template
+    id: reset_runtime_btn
+    name: "Reset Sauna Runtime Counters"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(oven_runtime_s) = 0;
+          id(fan_runtime_s) = 0;
+          id(light_runtime_s) = 0;
+          id(amp_runtime_s) = 0;
+
+  - platform: template
+    id: reset_eta_btn
+    name: "Reset ETA Calibration"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(eta_n) = 0;
+          id(eta_Sx) = 0.0f;
+          id(eta_Sy) = 0.0f;
+          id(eta_Sxx) = 0.0f;
+          id(eta_Sxy) = 0.0f;
+          id(eta_Syy) = 0.0f;
+          id(eta_A_est) = 1.20f;
+          id(eta_B_est) = 0.010f;
+          id(eta_last_ms) = 0;
+          id(eta_last_t) = NAN;
+
+  - platform: template
+    id: reset_thermal_btn
+    name: "Reset Thermal Model"
+    entity_category: diagnostic
+    on_press:
+      - lambda: |-
+          id(th_n) = 0;
+          id(th_S11) = 0; id(th_S22) = 0; id(th_S12) = 0;
+          id(th_T1)  = 0; id(th_T2)  = 0;
+          id(th_a) = 0; id(th_c) = 0;
+          id(th_last_ms) = 0;
+          id(th_last_tin) = NAN;
+
+
+# ================================
+# Internal state / model parameters
+# ================================
+globals:
+  # MQTT command ACK tracking
+  - id: last_ack_id
+    type: int
+    restore_value: yes
+    initial_value: "0"
+
+  - id: boost_active
+    type: bool
+    initial_value: "false"
+
+  - id: session_start
+    type: uint32_t
+    initial_value: "0"
+
+  - id: boost_start
+    type: uint32_t
+    initial_value: "0"
+
+  # PID duty request (0..1)
+  - id: pid_duty
+    type: float
+    initial_value: "0.0"
+
+  # Windowed control state
+  - id: window_start_ms
+    type: uint32_t
+    initial_value: "0"
+
+  - id: contactor_on
+    type: bool
+    initial_value: "false"
+
+  - id: force_climate_off
+    type: bool
+    initial_value: "false"
+
+  - id: oven_runtime_s
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  - id: fan_runtime_s
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  - id: light_runtime_s
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  - id: amp_runtime_s
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  # --- ETA model coefficients (persisted) ---
+  - id: eta_A_est
+    type: float
+    restore_value: yes
+    initial_value: "1.20"
+
+  - id: eta_B_est
+    type: float
+    restore_value: yes
+    initial_value: "0.010"
+
+  # --- online regression accumulators (persisted) ---
+  - id: eta_n
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  - id: eta_Sx
+    type: float
+    restore_value: yes
+    initial_value: "0.0"
+
+  - id: eta_Sy
+    type: float
+    restore_value: yes
+    initial_value: "0.0"
+
+  - id: eta_Sxx
+    type: float
+    restore_value: yes
+    initial_value: "0.0"
+
+  - id: eta_Sxy
+    type: float
+    restore_value: yes
+    initial_value: "0.0"
+
+  - id: eta_Syy
+    type: float
+    restore_value: yes
+    initial_value: "0.0"
+
+  # --- slop is e measurement state (not persisted) ---
+  - id: eta_last_t
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+
+  - id: eta_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # --- thermal model accumulators (persisted) ---
+  - id: th_n
+    type: uint32_t
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_S11
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_S22
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_S12
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_T1
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_T2
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_a
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  - id: th_c
+    type: double
+    restore_value: yes
+    initial_value: "0"
+
+  # --- slope measurement state (not persisted) ---
+  - id: th_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: th_last_tin
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+
+  - id: sensor_fault_last_log_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: sensor_fault_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: t_top_last_ok_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: t_head_last_ok_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: heat_mode_latched
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: heat_request_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: fault_heat_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+# ================================
+# Climate control (PID -> windowed contactor)
+# ================================
+climate:
+  - platform: pid
+    id: sauna_climate
+    name: "Sauna Climate"
+    sensor: t_control
+    default_target_temperature: 70 °C
+
+    # PID heat output is NOT directly driving power; it is used as a duty request (pid_duty).
+    heat_output: pid_heat_output
+
+    control_parameters:
+      kp: 0.75
+      ki: 0.0035
+      kd: 35
+
+    visual:
+      min_temperature: 30
+      max_temperature: 110
+      temperature_step: 1
+
+    deadband_parameters:
+      threshold_high: 0.3
+      threshold_low: -0.3
+    
+    on_state:
+      - lambda: |-
+          if (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT) {
+            id(heat_request_ms) = millis();
+          } else {
+            id(heat_request_ms) = 0;
+          }
+
+
+# ================================
+# Main control loop (safety, session, boost, windowing, models)
+# Runs every 1s and is the "single source of truth" for heater behavior.
+# ================================
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          // ------------------------------------------------------------
+          // Default: do not force climate off. We set this to true only
+          // when a hard safety / watchdog condition demands it.
+          // ------------------------------------------------------------
+          id(force_climate_off) = false;
+
+          const uint32_t now_ms = millis();
+
+          // ------------------------------------------------------------
+          // Track when HEAT mode was requested (edge detect).
+          // This prevents the grace timer from resetting every second.
+          // ------------------------------------------------------------
+          if (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT) {
+            if (!id(heat_mode_latched)) {
+              id(heat_mode_latched) = true;
+              id(heat_request_ms) = now_ms;         // when HEAT was first entered
+              // Note: do NOT reset fault_heat_start_ms here; we want it to reflect
+              // "time since sensors became faulty while HEAT is active".
+            }
+          } else {
+            id(heat_mode_latched) = false;
+            id(heat_request_ms) = 0;
+            id(fault_heat_start_ms) = 0;            // not heating -> no need to count grace
+          }
+
+          // ------------------------------------------------------------
+          // When not heating, we reset sensor "last OK" timestamps so that
+          // entering HEAT requires fresh valid sensor readings.
+          // ------------------------------------------------------------
+          if (id(sauna_climate).mode != climate::CLIMATE_MODE_HEAT) {
+            id(t_top_last_ok_ms) = 0;
+            id(t_head_last_ok_ms) = 0;
+          }
+
+          // ------------------------------------------------------------
+          // HARD SAFETY: absolute over-temperature cut-off (Top sensor).
+          // This is independent of PID/windowing. It is a "kill switch".
+          // ------------------------------------------------------------
+          if (!isnan(id(t_top).state) && id(t_top).state > 120.0f) {
+            id(sauna_contactor_hw).turn_off();
+            id(contactor_on) = false;
+            id(boost_active) = false;
+            id(pid_duty) = 0.0f;
+
+            id(force_climate_off) = true;  // also turn climate OFF to reflect reality in HA
+            return;
+          }
+
+          // ------------------------------------------------------------
+          // Sensor validity watchdog (DS18B20).
+          // We reject NaN, -127°C-ish, 85.0°C power-up default, and extremes.
+          // ------------------------------------------------------------
+          auto temp_ok = [](float v) -> bool {
+            if (isnan(v)) return false;
+            if (v <= -100.0f) return false;             // DS18B20 often reports ~-127 on error
+            if (fabsf(v - 85.0f) < 0.01f) return false; // DS18B20 power-up default is 85.0°C
+            if (v < -40.0f || v > 150.0f) return false; // out of plausible range
+            return true;
+          };
+
+          // Update "last OK timestamp" when we see plausible temperatures
+          if (temp_ok(id(t_top).state))  id(t_top_last_ok_ms)  = now_ms;
+          if (temp_ok(id(t_head).state)) id(t_head_last_ok_ms) = now_ms;
+
+          // If we haven't seen plausible values recently, treat sensors as missing/faulty
+          const uint32_t OK_TIMEOUT_MS = 15000UL;  // 15s without valid reading => fault
+          const bool top_missing  = (id(t_top_last_ok_ms)  == 0) || (now_ms - id(t_top_last_ok_ms)  > OK_TIMEOUT_MS);
+          const bool head_missing = (id(t_head_last_ok_ms) == 0) || (now_ms - id(t_head_last_ok_ms) > OK_TIMEOUT_MS);
+
+          // ------------------------------------------------------------
+          // If critical sensors are missing/faulty:
+          //  - Heater is forced OFF immediately (contactor OFF)
+          //  - Optional: after GRACE_MS in HEAT mode, climate is forced OFF
+          //  - WARN log throttled to once per 10s
+          // ------------------------------------------------------------
+          if (top_missing || head_missing) {
+            id(sensor_fault_active) = true;
+
+            // Always force heater OFF while sensor fault exists
+            id(sauna_contactor_hw).turn_off();
+            id(contactor_on) = false;
+            id(boost_active) = false;
+            id(pid_duty) = 0.0f;
+
+            // Throttled warning every 10 seconds (avoid log spam / blocking)
+            const uint32_t LOG_INTERVAL_MS = 10000UL;
+            if ((now_ms - id(sensor_fault_last_log_ms)) >= LOG_INTERVAL_MS) {
+              ESP_LOGW("sauna",
+                       "Sensor fault detected: top_missing=%d head_missing=%d (t_top=%.2f t_head=%.2f)",
+                       (int) top_missing, (int) head_missing,
+                       id(t_top).state, id(t_head).state);
+              id(sensor_fault_last_log_ms) = now_ms;
+            }
+
+            // If user requested HEAT but sensors remain faulty beyond GRACE_MS, force climate OFF.
+            // This prevents HA from showing "HEAT" while the controller refuses to heat.
+            const uint32_t GRACE_MS = 30000UL;  // 30s grace after HEAT with bad sensors
+
+            if (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT) {
+              if (id(fault_heat_start_ms) == 0) id(fault_heat_start_ms) = now_ms;
+
+              if ((now_ms - id(fault_heat_start_ms)) > GRACE_MS) {
+                id(force_climate_off) = true;
+              }
+            } else {
+              // Not in HEAT -> reset grace timer
+              id(fault_heat_start_ms) = 0;
+            }
+
+            return;  // stop here; do NOT execute any heater/windowing logic
+          }
+
+          // Sensors look OK here
+          id(sensor_fault_active) = false;
+          id(fault_heat_start_ms) = 0;
+
+          // ------------------------------------------------------------
+          // If climate is not HEAT:
+          //  - Heater is OFF and all heater logic is skipped
+          //  - Fan logic and runtime counters still run
+          // ------------------------------------------------------------
+          if (id(sauna_climate).mode != climate::CLIMATE_MODE_HEAT) {
+            id(sauna_contactor_hw).turn_off();
+            id(contactor_on) = false;
+            id(boost_active) = false;
+            id(pid_duty) = 0.0f;
+            id(session_start) = 0;
+
+            // Destratification fan (allowed even when sauna is OFF)
+            if (!isnan(id(d_strat).state)) {
+              float d = id(d_strat).state;
+              float sp = id(fan_dt_sp).state;
+
+              const float HYST = 5.0f;
+              float on_th  = sp + HYST;
+              float off_th = sp - HYST;
+
+              if (!id(fan_destrat).state && d >= on_th)
+                id(fan_destrat).turn_on();
+              else if (id(fan_destrat).state && d <= off_th)
+                id(fan_destrat).turn_off();
+            }
+
+            // Runtime counters (seconds)
+            if (id(fan_destrat).state)  id(fan_runtime_s)  += 1;
+            if (id(sauna_amp).state)    id(amp_runtime_s)  += 1;
+            if (id(sauna_light).current_values.is_on()) id(light_runtime_s) += 1;
+
+            return;
+          }
+
+          // ------------------------------------------------------------
+          // Session timer (only in HEAT). Enforces max run time.
+          // ------------------------------------------------------------
+          if (id(session_start) == 0) id(session_start) = now_ms;
+
+          const uint32_t max_ms = (uint32_t)(id(max_session_min).state * 60000.0f);
+          if ((now_ms - id(session_start)) > max_ms) {
+            id(sauna_contactor_hw).turn_off();
+            id(contactor_on) = false;
+            id(boost_active) = false;
+            id(pid_duty) = 0.0f;
+
+            id(force_climate_off) = true;
+            return;
+          }
+
+          // ------------------------------------------------------------
+          // Boost logic (only in HEAT)
+          // Boost overrides PID duty to 100% until close to setpoint or timeout.
+          // ------------------------------------------------------------
+          if (!isnan(id(t_control).state)) {
+            float t  = id(t_control).state;
+            float sp = id(sauna_climate).target_temperature;
+
+            // Enter boost when far below setpoint
+            if (!id(boost_active) && t < sp - id(boost_window).state) {
+              id(boost_active) = true;
+              id(boost_start) = now_ms;
+            }
+
+            // Exit boost when close enough to setpoint
+            if (id(boost_active) && t >= sp - id(boost_exit).state) {
+              id(boost_active) = false;
+            }
+
+            // Safety timeout for boost
+            const uint32_t BOOST_MAX_MS = 25UL * 60UL * 1000UL;  // 25 minutes
+            if (id(boost_active) && (now_ms - id(boost_start)) > BOOST_MAX_MS) {
+              id(boost_active) = false;
+            }
+          } else {
+            // If control temp is invalid, do not boost
+            id(boost_active) = false;
+          }
+
+          // ------------------------------------------------------------
+          // Windowed contactor control with min ON/OFF constraints.
+          // This converts PID duty (0..1) into relay-friendly ON/OFF behavior.
+          // ------------------------------------------------------------
+          const uint32_t WINDOW_MS  = (uint32_t)(${contactor_window_s}  * 1000UL);
+          const uint32_t MIN_ON_MS  = (uint32_t)(${contactor_min_on_s}  * 1000UL);
+          const uint32_t MIN_OFF_MS = (uint32_t)(${contactor_min_off_s} * 1000UL);
+
+          if (id(window_start_ms) == 0) id(window_start_ms) = now_ms;
+
+          uint32_t elapsed = now_ms - id(window_start_ms);
+          if (elapsed >= WINDOW_MS) {
+            id(window_start_ms) = now_ms;
+            elapsed = 0;
+          }
+
+          float duty = id(pid_duty);          // requested duty from PID
+          if (id(boost_active)) duty = 1.0f;  // boost overrides PID
+
+          // Convert duty to ON time in this window
+          uint32_t on_ms = (uint32_t)(duty * (float)WINDOW_MS + 0.5f);
+
+          // Enforce minimum ON pulse (if not zero)
+          if (on_ms > 0 && on_ms < MIN_ON_MS) on_ms = MIN_ON_MS;
+
+          // Clamp to window size
+          if (on_ms > WINDOW_MS) on_ms = WINDOW_MS;
+
+          // Enforce minimum OFF time (unless full ON)
+          if (on_ms < WINDOW_MS && (WINDOW_MS - on_ms) < MIN_OFF_MS) {
+            on_ms = WINDOW_MS - MIN_OFF_MS;
+          }
+
+          const bool should_be_on = (on_ms > 0) && (elapsed < on_ms);
+
+          // Apply to hardware every cycle (prevents desync)
+          if (should_be_on) {
+            id(sauna_contactor_hw).turn_on();
+            id(contactor_on) = true;
+          } else {
+            id(sauna_contactor_hw).turn_off();
+            id(contactor_on) = false;
+          }
+
+          // ------------------------------------------------------------
+          // Destratification fan control (simple hysteresis on dT).
+          // ------------------------------------------------------------
+          if (!isnan(id(d_strat).state)) {
+            float d  = id(d_strat).state;
+            float sp = id(fan_dt_sp).state;
+
+            const float HYST = 5.0f;
+            float on_th  = sp + HYST;
+            float off_th = sp - HYST;
+
+            if (!id(fan_destrat).state && d >= on_th)
+              id(fan_destrat).turn_on();
+            else if (id(fan_destrat).state && d <= off_th)
+              id(fan_destrat).turn_off();
+          }
+
+          // ------------------------------------------------------------
+          // Runtime counters (seconds).
+          // These are simple integrators incremented once per second.
+          // ------------------------------------------------------------
+          if (id(contactor_on))         id(oven_runtime_s) += 1;
+          if (id(fan_destrat).state)    id(fan_runtime_s)  += 1;
+          if (id(sauna_amp).state)      id(amp_runtime_s)  += 1;
+          if (id(sauna_light).current_values.is_on()) id(light_runtime_s) += 1;
+
+          // ------------------------------------------------------------
+          // ------------------------------------------------------------
+          // ETA auto-calibration (online): learns rate = A + B*Tout.
+          // PAUSE when sensor_fault_active (freeze learning; reset slope memory).
+          // ------------------------------------------------------------
+          if (!id(sensor_fault_active) &&
+              id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
+              !isnan(id(t_control).state) &&
+              !isnan(id(t_outdoor).state) &&
+              (id(pid_duty) > 0.05f || id(boost_active))) {
+
+            uint32_t now_ms2 = now_ms;
+
+            if (id(eta_last_ms) == 0 || isnan(id(eta_last_t))) {
+              id(eta_last_ms) = now_ms2;
+              id(eta_last_t) = id(t_control).state;
+            } else {
+              float dmin = (now_ms2 - id(eta_last_ms)) / 60000.0f;
+
+              if (dmin >= (5.0f / 60.0f)) {
+                float t_now = id(t_control).state;
+                float dt = t_now - id(eta_last_t);
+
+                id(eta_last_ms) = now_ms2;
+                id(eta_last_t) = t_now;
+
+                float rate_obs = dt / dmin;
+
+                if (rate_obs > 0.05f && rate_obs < 5.0f) {
+                  float sp = id(sauna_climate).target_temperature;
+                  if (t_now < sp - 3.0f) {
+                    float x = id(t_outdoor).state;
+                    float y = rate_obs;
+
+                    id(eta_n)   += 1;
+                    id(eta_Sx)  += x;
+                    id(eta_Sy)  += y;
+                    id(eta_Sxx) += x * x;
+                    id(eta_Sxy) += x * y;
+                    id(eta_Syy) += y * y;
+
+                    if (id(eta_n) >= 30) {
+                      float n   = (float)id(eta_n);
+                      float den = (n * id(eta_Sxx) - id(eta_Sx) * id(eta_Sx));
+
+                      if (fabsf(den) > 1e-6f) {
+                        float B = (n * id(eta_Sxy) - id(eta_Sx) * id(eta_Sy)) / den;
+                        float A = (id(eta_Sy) - B * id(eta_Sx)) / n;
+
+                        if (A < 0.10f) A = 0.10f;
+                        if (A > 5.00f) A = 5.00f;
+                        if (B < -0.05f) B = -0.05f;
+                        if (B >  0.05f) B =  0.05f;
+
+                        id(eta_A_est) = id(eta_A_est) * 0.95f + A * 0.05f;
+                        id(eta_B_est) = id(eta_B_est) * 0.95f + B * 0.05f;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // Not learning OR sensors faulty -> reset slope memory (avoid bogus dt on resume)
+            id(eta_last_ms) = 0;
+            id(eta_last_t) = NAN;
+          }
+
+          // ------------------------------------------------------------
+          // Thermal model learning (online): dTin/dt = a*P + c*(Tin-Tout)
+          // PAUSE when sensor_fault_active (freeze learning; reset slope memory).
+          // ------------------------------------------------------------
+          if (!id(sensor_fault_active) &&
+              !isnan(id(t_control).state) &&
+              !isnan(id(t_outdoor).state)) {
+
+            uint32_t th_now = now_ms;
+
+            if (id(th_last_ms) == 0 || isnan(id(th_last_tin))) {
+              id(th_last_ms) = th_now;
+              id(th_last_tin) = id(t_control).state;
+            } else {
+              float dsec = (th_now - id(th_last_ms)) / 1000.0f;
+
+              if (dsec >= 5.0f) {
+                float Tin  = id(t_control).state;
+                float Tout = id(t_outdoor).state;
+
+                float dTin = Tin - id(th_last_tin);
+                float y = dTin / dsec;
+
+                id(th_last_ms) = th_now;
+                id(th_last_tin) = Tin;
+
+                double P  = id(contactor_on) ? ((double)${power_of_sauna_oven} * 1000.0) : 0.0;
+                double dT = (double)(Tin - Tout);
+
+                if (fabsf(y) < 0.02f && P == 0.0) {
+                  // skip
+                } else if (y > 0.05f || y < -0.05f || fabsf(dT) > 1.0f) {
+                  id(th_n)   += 1;
+                  id(th_S11) += P * P;
+                  id(th_S22) += dT * dT;
+                  id(th_S12) += P * dT;
+                  id(th_T1)  += P * (double)y;
+                  id(th_T2)  += dT * (double)y;
+
+                  if (id(th_n) >= 40) {
+                    double S11 = id(th_S11), S22 = id(th_S22), S12 = id(th_S12);
+                    double T1  = id(th_T1),  T2  = id(th_T2);
+
+                    double det = S11 * S22 - S12 * S12;
+                    if (fabs(det) > 1e-9) {
+                      double a = ( T1 * S22 - T2 * S12) / det;
+                      double c = ( S11 * T2 - S12 * T1) / det;
+
+                      if (a > 0.0 && a < 1e-2 && c < 0.0 && c > -1e-2) {
+                        id(th_a) = id(th_a) * 0.95 + a * 0.05;
+                        id(th_c) = id(th_c) * 0.95 + c * 0.05;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // Sensors faulty/missing OR invalid inputs -> reset slope memory only
+            id(th_last_ms) = 0;
+            id(th_last_tin) = NAN;
+          }
+
+      - if:
+          condition:
+            lambda: 'return id(force_climate_off);'
+          then:
+            - switch.turn_off: sauna_contactor_hw
+            - climate.control:
+                id: sauna_climate
+                mode: 'OFF'
+
+  # Publish telemetry snapshot to MQTT.
+  - interval: 20s
+    then:
+      - mqtt.publish_json:
+          topic: ${mqtt_topic_base}/telemetry
+          qos: 0
+          payload: |-
+            bool eta_learning_active = (
+              id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
+              !isnan(id(t_control).state) &&
+              !isnan(id(t_outdoor).state) &&
+              (id(pid_duty) > 0.05f || id(boost_active))
+            );
+
+            double thermal_ua = NAN;
+            double thermal_c = NAN;
+            double thermal_tau = NAN;
+            if (id(th_a) > 0.0) {
+              thermal_ua = (-id(th_c)) / id(th_a);
+              thermal_c = (1.0 / id(th_a)) / 1000.0;
+            }
+            if (id(th_c) < -1e-9) {
+              thermal_tau = (-1.0 / id(th_c)) / 60.0;
+            }
+
+            std::string control_src = id(control_temp_source).current_option().c_str();
+            if (control_src.empty()) control_src = "Average (Top+Head)";
+
+            root["device_id"] = "${internalname}";
+            JsonObject status = root["status"].to<JsonObject>();
+            status["t_top_c"] = isnan(id(t_top).state) ? 0.0f : id(t_top).state;
+            status["t_head_c"] = isnan(id(t_head).state) ? 0.0f : id(t_head).state;
+            status["t_under_c"] = isnan(id(t_under).state) ? 0.0f : id(t_under).state;
+            status["t_outdoor_c"] = isnan(id(t_outdoor).state) ? 0.0f : id(t_outdoor).state;
+            status["t_control"] = isnan(id(t_control).state) ? 0.0f : id(t_control).state;
+            status["strat_delta_c"] = isnan(id(d_strat).state) ? 0.0f : id(d_strat).state;
+            status["mode"] = id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT ? "HEAT" : "OFF";
+            status["setpoint_c"] = id(sauna_climate).target_temperature;
+            status["heater_power_pct"] = id(pid_duty) * 100.0f;
+            status["fan_on"] = id(fan_destrat).state;
+            status["light_on"] = id(sauna_light).current_values.is_on();
+            status["amp_on"] = id(sauna_amp).state;
+            status["contactor_active"] = id(contactor_on);
+            status["boost_active"] = id(boost_active);
+            status["sensor_fault"] = id(sensor_fault_active);
+            status["power_w"] = isnan(id(sauna_power_w).state) ? 0.0f : id(sauna_power_w).state;
+            status["heat_loss_w"] = isnan(id(sauna_heat_loss_w).state) ? 0.0f : id(sauna_heat_loss_w).state;
+            status["heat_loss_kw"] = isnan(id(sauna_heat_loss_kw).state) ? 0.0f : id(sauna_heat_loss_kw).state;
+            status["heating_headroom_kw"] = isnan(id(sauna_heating_headroom_kw).state) ? 0.0f : id(sauna_heating_headroom_kw).state;
+
+            status["boost_window_c"] = id(boost_window).state;
+            status["boost_exit_c"] = id(boost_exit).state;
+            status["max_session_min"] = id(max_session_min).state;
+            status["fan_dt_setpoint_c"] = id(fan_dt_sp).state;
+            status["control_temp_source"] = control_src.c_str();
+            status["control_temp_source_active"] = id(control_temp_source_active).state.c_str();
+            status["control_temp_valid"] = isnan(id(control_temp_valid).state) ? 0.0f : id(control_temp_valid).state;
+
+            status["oven_runtime_s"] = id(oven_runtime_s);
+            status["fan_runtime_s"] = id(fan_runtime_s);
+            status["light_runtime_s"] = id(light_runtime_s);
+            status["amp_runtime_s"] = id(amp_runtime_s);
+            status["energy_wh"] = isnan(id(sauna_energy_wh).state) ? 0.0f : id(sauna_energy_wh).state;
+            status["energy_kwh"] = isnan(id(sauna_energy_kwh).state) ? 0.0f : id(sauna_energy_kwh).state;
+
+            status["eta_model_a"] = isnan(id(eta_A_sensor).state) ? 0.0f : id(eta_A_sensor).state;
+            status["eta_model_b"] = isnan(id(eta_B_sensor).state) ? 0.0f : id(eta_B_sensor).state;
+            status["eta_auto_min"] = isnan(id(sauna_eta_min).state) ? 0.0f : id(sauna_eta_min).state;
+            status["eta_pred_min"] = isnan(id(sauna_eta_min_pred).state) ? 0.0f : id(sauna_eta_min_pred).state;
+            status["eta_samples"] = id(eta_n);
+            status["eta_rmse"] = isnan(id(eta_rmse).state) ? 0.0f : id(eta_rmse).state;
+            status["eta_confidence"] = isnan(id(eta_confidence).state) ? 0.0f : id(eta_confidence).state;
+            status["eta_pred_rate"] = isnan(id(eta_rate_pred).state) ? 0.0f : id(eta_rate_pred).state;
+            status["eta_learning_active"] = eta_learning_active;
+
+            status["thermal_model_samples"] = id(th_n);
+            status["thermal_ua"] = isnan(thermal_ua) ? 0.0f : (float) thermal_ua;
+            status["thermal_c"] = isnan(thermal_c) ? 0.0f : (float) thermal_c;
+            status["thermal_tau"] = isnan(thermal_tau) ? 0.0f : (float) thermal_tau;
+
+            status["uptime_seconds"] = (unsigned long)(millis() / 1000);
+            root["last_ack_id"] = id(last_ack_id);
+
+
+# ================================
+# MQTT Integration
+# ================================

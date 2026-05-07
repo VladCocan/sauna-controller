@@ -1,0 +1,515 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-10 08:58+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: ro\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?"
+"2:1));\n"
+#: core/templates/core/_device_card.html:9
+msgid "Last seen:"
+msgstr "Ultima actualizare:"
+
+#: core/templates/core/_device_card.html:19
+msgid "ack:"
+msgstr "ack:"
+
+#: core/templates/core/_device_card.html:27
+msgid "Status"
+msgstr "Stare"
+
+#: core/templates/core/_device_card.html:32
+msgid "Settings"
+msgstr "Setări"
+
+#: core/templates/core/_device_card.html:37
+msgid "Diagnostic"
+msgstr "Diagnostic"
+
+#: core/templates/core/_device_card.html:52
+msgid "Heater"
+msgstr "Încălzitor"
+
+#: core/templates/core/_device_card.html:65
+msgid "Setpoint"
+msgstr "Temperatură țintă"
+
+#: core/templates/core/_device_card.html:72
+msgid "Temperature Top"
+msgstr "Temperatura sus"
+
+#: core/templates/core/_device_card.html:79
+msgid "Temperature Head"
+msgstr "Temperatura cap"
+
+#: core/templates/core/_device_card.html:86
+msgid "Temperature Under"
+msgstr "Temperatura sub bancă"
+
+#: core/templates/core/_device_card.html:93
+msgid "Outdoor"
+msgstr "Exterior"
+
+#: core/templates/core/_device_card.html:100
+msgid "Temperature Chart"
+msgstr "Grafic temperaturi"
+
+#: core/templates/core/_device_card.html:126
+msgid "Climate Control"
+msgstr "Control termic"
+
+#: core/templates/core/_device_card.html:135
+msgid "Heater Mode"
+msgstr "Mod încălzire"
+
+#: core/templates/core/_device_card.html:140
+#: core/templates/core/dashboard.html:59
+msgid "OFF"
+msgstr "Oprit"
+
+#: core/templates/core/_device_card.html:145
+msgid "HEAT"
+msgstr "ÎNCĂLZIRE"
+
+#: core/templates/core/_device_card.html:153
+msgid "Target Temperature"
+msgstr "Temperatura setată"
+
+#: core/templates/core/_device_card.html:179
+msgid "Device Controls"
+msgstr "Comenzi dispozitiv"
+
+#: core/templates/core/_device_card.html:192
+#: core/templates/core/dashboard.html:68
+msgid "Fan"
+msgstr "Ventilator"
+
+#: core/templates/core/_device_card.html:207
+#: core/templates/core/dashboard.html:69
+msgid "Light"
+msgstr "Lumina"
+
+#: core/templates/core/_device_card.html:222
+#: core/templates/core/dashboard.html:70
+msgid "Amplifier"
+msgstr "Amplificator"
+
+#: core/templates/core/_device_card.html:232
+msgid "Confirm emergency stop? Heater will be set to OFF immediately."
+msgstr "Confirmi oprirea de urgență? Încălzirea va fi setată pe OFF imediat."
+
+#: core/templates/core/_device_card.html:238
+msgid "EMERGENCY STOP"
+msgstr "OPRIRE DE URGENȚĂ"
+
+#: core/templates/core/_device_card.html:257
+msgid "Config Parameters"
+msgstr "Parametri configurare"
+
+#: core/templates/core/_device_card.html:266
+#: core/templates/core/dashboard.html:72
+msgid "Boost Window (degC)"
+msgstr "Fereastră Boost (degC)"
+
+#: core/templates/core/_device_card.html:269
+#: core/templates/core/_device_card.html:281
+#: core/templates/core/_device_card.html:293
+#: core/templates/core/_device_card.html:305
+#: core/templates/core/_device_card.html:321
+msgid "Apply"
+msgstr "Aplică"
+
+#: core/templates/core/_device_card.html:278
+#: core/templates/core/dashboard.html:73
+msgid "Boost Exit (degC)"
+msgstr "Prag ieșire Boost (degC)"
+
+#: core/templates/core/_device_card.html:290
+#: core/templates/core/dashboard.html:74
+msgid "Max Session (min)"
+msgstr "Sesiune maximă (min)"
+
+#: core/templates/core/_device_card.html:302
+#: core/templates/core/dashboard.html:75
+msgid "Fan dT Setpoint (degC)"
+msgstr "Prag dT ventilator (degC)"
+
+#: core/templates/core/_device_card.html:314
+#: core/templates/core/dashboard.html:76
+msgid "Control Temp Source"
+msgstr "Sursă temperatură control"
+
+#: core/templates/core/_device_card.html:334
+msgid "Maintenance Actions"
+msgstr "Acțiuni mentenanță"
+
+#: core/templates/core/_device_card.html:338
+msgid "Confirm reset for Sauna Energy?"
+msgstr "Confirmi resetarea energiei saunei?"
+
+#: core/templates/core/_device_card.html:343
+msgid "Reset Sauna Energy"
+msgstr "Resetează energia saunei"
+
+#: core/templates/core/_device_card.html:346
+msgid "Confirm reset for runtime counters?"
+msgstr "Confirmi resetarea contoarelor de rulare?"
+
+#: core/templates/core/_device_card.html:351
+msgid "Reset Runtime Counters"
+msgstr "Resetează contoarele de rulare"
+
+#: core/templates/core/_device_card.html:354
+msgid "Confirm reset for ETA calibration?"
+msgstr "Confirmi resetarea calibrării ETA?"
+
+#: core/templates/core/_device_card.html:359
+msgid "Reset ETA Calibration"
+msgstr "Resetează calibrarea ETA"
+
+#: core/templates/core/_device_card.html:362
+msgid "Confirm reset for thermal model?"
+msgstr "Confirmi resetarea modelului termic?"
+
+#: core/templates/core/_device_card.html:367
+msgid "Reset Thermal Model"
+msgstr "Resetează modelul termic"
+
+#: core/templates/core/_device_card.html:370
+msgid "Confirm controller restart? Device will disconnect briefly."
+msgstr "Confirmi repornirea controlerului? Dispozitivul se va deconecta scurt."
+
+#: core/templates/core/_device_card.html:375
+msgid "Restart Controller"
+msgstr "Repornește controlerul"
+
+#: core/templates/core/_device_card.html:384
+msgid "Live Diagnostics"
+msgstr "Diagnostic live"
+
+#: core/templates/core/_device_card.html:385
+msgid "Loading..."
+msgstr "Se încarcă..."
+
+#: core/templates/core/_device_card.html:391
+msgid "Pending Commands"
+msgstr "Comenzi în așteptare"
+
+#: core/templates/core/_device_card.html:398
+msgid "Device Information"
+msgstr "Informații dispozitiv"
+
+#: core/templates/core/_device_card.html:400
+msgid "Device ID:"
+msgstr "ID dispozitiv:"
+
+#: core/templates/core/_device_card.html:401
+msgid "Owner:"
+msgstr "Proprietar:"
+
+#: core/templates/core/_device_card.html:402
+msgid "Last ACK ID:"
+msgstr "Ultimul ACK ID:"
+
+#: core/templates/core/_device_card.html:403
+msgid "Status:"
+msgstr "Stare:"
+
+#: core/templates/core/_navbar.html:20
+msgid "Installed"
+msgstr "Instalată"
+
+#: core/templates/core/_navbar.html:24
+msgid "Install App"
+msgstr "Instalează aplicația"
+
+#: core/templates/core/_navbar.html:30
+msgid "Logout"
+msgstr "Ieșire"
+
+#: core/templates/core/_navbar.html:34
+msgid "Admin"
+msgstr "Administrare"
+
+#: core/templates/core/_toasts.html:7
+msgid "Close"
+msgstr "Închide"
+
+#: core/templates/core/dashboard.html:16
+msgid "You have no devices. Create one in Admin -> Core -> Devices."
+msgstr "Nu ai dispozitive. Creează unul în Admin -> Core -> Devices."
+
+#: core/templates/core/dashboard.html:23
+msgid "Device:"
+msgstr "Dispozitiv:"
+
+#: core/templates/core/dashboard.html:48
+msgid "ONLINE"
+msgstr "Conectat"
+
+#: core/templates/core/dashboard.html:49
+msgid "OFFLINE"
+msgstr "Deconectat"
+
+#: core/templates/core/dashboard.html:50
+msgid "SAUNA ON"
+msgstr "Sauna pornită"
+
+#: core/templates/core/dashboard.html:51
+msgid "SAUNA OFF"
+msgstr "Sauna oprită"
+
+#: core/templates/core/dashboard.html:52
+msgid "Light on"
+msgstr "Lumina pornită"
+
+#: core/templates/core/dashboard.html:53
+msgid "Light off"
+msgstr "Lumina oprită"
+
+#: core/templates/core/dashboard.html:54
+msgid "Fan on"
+msgstr "Ventilator pornit"
+
+#: core/templates/core/dashboard.html:55
+msgid "Fan off"
+msgstr "Ventilator oprit"
+
+#: core/templates/core/dashboard.html:56
+msgid "Amplifier on"
+msgstr "Amplificator pornit"
+
+#: core/templates/core/dashboard.html:57
+msgid "Amplifier off"
+msgstr "Amplificator oprit"
+
+#: core/templates/core/dashboard.html:58
+msgid "ON"
+msgstr "Pornit"
+
+#: core/templates/core/dashboard.html:60
+msgid "Sending..."
+msgstr "Se trimite..."
+
+#: core/templates/core/dashboard.html:61
+msgid "Unavailable"
+msgstr "Indisponibil"
+
+#: core/templates/core/dashboard.html:62
+msgid "Controls"
+msgstr "Controale"
+
+#: core/templates/core/dashboard.html:63
+msgid "Configuration"
+msgstr "Configurare"
+
+#: core/templates/core/dashboard.html:64
+msgid "Sensors"
+msgstr "Senzori"
+
+#: core/templates/core/dashboard.html:65
+msgid "Models & Runtime"
+msgstr "Modele și rulare"
+
+#: core/templates/core/dashboard.html:66
+msgid "Sauna Climate"
+msgstr "Climă saună"
+
+#: core/templates/core/dashboard.html:67
+msgid "Setpoint (degC)"
+msgstr "Temperatură țintă (degC)"
+
+#: core/templates/core/dashboard.html:71
+msgid "Contactor Active"
+msgstr "Contactor activ"
+
+#: core/templates/core/dashboard.html:77
+msgid "Control Temp Source Active"
+msgstr "Sursă temperatură activă"
+
+#: core/templates/core/dashboard.html:78
+msgid "Temp Top"
+msgstr "Temperatura sus"
+
+#: core/templates/core/dashboard.html:79
+msgid "Temp Head"
+msgstr "Temperatura cap"
+
+#: core/templates/core/dashboard.html:80
+msgid "Temp Under"
+msgstr "Temperatura sub bancă"
+
+#: core/templates/core/dashboard.html:81
+msgid "Temp Outdoor"
+msgstr "Temperatura exterior"
+
+#: core/templates/core/dashboard.html:82
+msgid "Temp Control"
+msgstr "Temperatura control"
+
+#: core/templates/core/dashboard.html:83
+msgid "Strat Delta"
+msgstr "Delta stratificare"
+
+#: core/templates/core/dashboard.html:84
+msgid "Power (W)"
+msgstr "Putere (W)"
+
+#: core/templates/core/dashboard.html:85
+msgid "Heat Loss (W)"
+msgstr "Pierderi căldură (W)"
+
+#: core/templates/core/dashboard.html:86
+msgid "Heat Loss (kW)"
+msgstr "Pierderi căldură (kW)"
+
+#: core/templates/core/dashboard.html:87
+msgid "Heating Headroom (kW)"
+msgstr "Rezervă încălzire (kW)"
+
+#: core/templates/core/dashboard.html:88
+msgid "Sensor Fault"
+msgstr "Defect senzor"
+
+#: core/templates/core/dashboard.html:89
+msgid "Control Temp Valid"
+msgstr "Temperatură control validă"
+
+#: core/templates/core/dashboard.html:90
+msgid "ETA A"
+msgstr "ETA A"
+
+#: core/templates/core/dashboard.html:91
+msgid "ETA B"
+msgstr "ETA B"
+
+#: core/templates/core/dashboard.html:92
+msgid "ETA Auto (min)"
+msgstr "ETA auto (min)"
+
+#: core/templates/core/dashboard.html:93
+msgid "ETA Pred (min)"
+msgstr "ETA estimat (min)"
+
+#: core/templates/core/dashboard.html:94
+msgid "ETA RMSE"
+msgstr "ETA RMSE"
+
+#: core/templates/core/dashboard.html:95
+msgid "ETA Confidence"
+msgstr "Încredere estimare ETA"
+
+#: core/templates/core/dashboard.html:96
+msgid "ETA Pred Rate"
+msgstr "Rată estimare ETA"
+
+#: core/templates/core/dashboard.html:97
+msgid "ETA Samples"
+msgstr "Eșantioane ETA"
+
+#: core/templates/core/dashboard.html:98
+msgid "ETA Learning Active"
+msgstr "Învățare ETA activă"
+
+#: core/templates/core/dashboard.html:99
+msgid "Thermal Samples"
+msgstr "Eșantioane termice"
+
+#: core/templates/core/dashboard.html:100
+msgid "Thermal UA"
+msgstr "UA termic"
+
+#: core/templates/core/dashboard.html:101
+msgid "Thermal C"
+msgstr "C termic"
+
+#: core/templates/core/dashboard.html:102
+msgid "Thermal Tau"
+msgstr "Tau termic"
+
+#: core/templates/core/dashboard.html:103
+msgid "Energy Wh"
+msgstr "Energie Wh"
+
+#: core/templates/core/dashboard.html:104
+msgid "Energy kWh"
+msgstr "Energie kWh"
+
+#: core/templates/core/dashboard.html:105
+msgid "Oven Runtime s"
+msgstr "Timp rulare cuptor s"
+
+#: core/templates/core/dashboard.html:106
+msgid "Fan Runtime s"
+msgstr "Timp rulare ventilator s"
+
+#: core/templates/core/dashboard.html:107
+msgid "Light Runtime s"
+msgstr "Timp rulare lumina s"
+
+#: core/templates/core/dashboard.html:108
+msgid "Amp Runtime s"
+msgstr "Timp rulare amplificator s"
+
+#: core/templates/core/dashboard.html:109
+msgid "Boost Active"
+msgstr "Boost activ"
+
+#: core/templates/core/dashboard.html:110
+msgid "Heater Power pct"
+msgstr "Putere încălzire pct"
+
+#: core/templates/core/dashboard.html:111
+msgid "Uptime seconds"
+msgstr "Timp funcționare secunde"
+
+#: core/templates/core/dashboard.html:112
+msgid "Are you sure?"
+msgstr "Ești sigur?"
+
+#: core/templates/core/dashboard.html:113
+msgid "Command failed (HTTP __STATUS__)"
+msgstr "Comanda a eșuat (HTTP __STATUS__)"
+
+#: core/templates/core/dashboard.html:114
+msgid "Command queued"
+msgstr "Comanda pusă în coadă"
+
+#: core/templates/core/dashboard.html:115
+msgid "Network error"
+msgstr "Eroare de rețea"
+
+#: templates/registration/login.html:8 templates/registration/login.html:50
+msgid "Login"
+msgstr "Autentificare"
+
+#: templates/registration/login.html:26
+msgid "Sauna Login"
+msgstr "Autentificare Sauna"
+
+#: templates/registration/login.html:30
+msgid "Invalid username/password."
+msgstr "Utilizator/parolă greșite."
+
+#: templates/registration/login.html:38
+msgid "Username"
+msgstr "Utilizator"
+
+#: templates/registration/login.html:43
+msgid "Password"
+msgstr "Parolă"
+
+#: templates/registration/login.html:55
+msgid "Admin:"
+msgstr "Administrare:"

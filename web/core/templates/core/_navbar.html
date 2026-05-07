@@ -1,0 +1,43 @@
+{% load i18n %}
+{% get_current_language as CURRENT_LANG %}
+<nav class="navbar navbar-expand bg-white border-bottom">
+  <div class="container">
+    <span class="navbar-brand mb-0 h1">Sauna</span>
+
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <form method="post" action="{% url 'set_language' %}" class="d-flex align-items-center gap-1">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+        <select name="language" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Language">
+          <option value="ro" {% if CURRENT_LANG == "ro" %}selected{% endif %}>RO</option>
+          <option value="en" {% if CURRENT_LANG == "en" %}selected{% endif %}>EN</option>
+        </select>
+      </form>
+
+      <span class="text-muted small">{{ request.user.username }}</span>
+
+      <span id="app-installed-badge" class="badge text-bg-success d-none">
+        <i class="bi bi-check2-circle me-1"></i>{% trans "Installed" %}
+      </span>
+
+      <button
+        id="install-app-btn"
+        class="btn btn-outline-success btn-sm d-none"
+        type="button"
+        data-install-ios-help="{% trans 'Pentru instalare pe iPhone/iPad: apasa Share, apoi Add to Home Screen.' %}"
+        data-install-generic-help="{% trans 'Pentru instalare: foloseste meniul browserului si alege Install app sau Add to Home Screen.' %}"
+      >
+        <i class="bi bi-download me-1"></i>{% trans "Install App" %}
+      </button>
+
+      <form method="post" action="/accounts/logout/">
+        {% csrf_token %}
+        <button class="btn btn-outline-secondary btn-sm" type="submit">
+          {% trans "Logout" %}
+        </button>
+      </form>
+
+      <a class="btn btn-outline-primary btn-sm" href="/admin/">{% trans "Admin" %}</a>
+    </div>
+  </div>
+</nav>

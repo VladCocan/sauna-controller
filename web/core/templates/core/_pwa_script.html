@@ -1,0 +1,180 @@
+<script>
+let deferredInstallPrompt = null;
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIosLike() {
+  const ua = window.navigator.userAgent || "";
+  const iDevice = /iPad|iPhone|iPod/.test(ua);
+  const iPadDesktopMode = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
+  return iDevice || iPadDesktopMode;
+}
+
+function isChromiumDesktop() {
+  const ua = window.navigator.userAgent || "";
+  const isChromium = /Chrome|Chromium|Edg\//.test(ua);
+  return isChromium && !isIosLike();
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForInstallPrompt(timeoutMs = 2500) {
+  if (deferredInstallPrompt) return true;
+
+  return new Promise((resolve) => {
+    let done = false;
+
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      clearTimeout(timer);
+      resolve(value);
+    };
+
+    const onPrompt = (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      refreshInstallUi();
+      finish(true);
+    };
+
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+  });
+}
+
+async function triggerNativeInstall() {
+  if (!deferredInstallPrompt) return false;
+
+  deferredInstallPrompt.prompt();
+  try {
+    await deferredInstallPrompt.userChoice;
+  } catch (e) {
+    console.warn("Install prompt closed", e);
+  }
+  deferredInstallPrompt = null;
+  refreshInstallUi();
+  return true;
+}
+
+function showInstallFallback() {
+  const btn = document.getElementById("install-app-btn");
+  if (!btn) return;
+
+  const iosHelp = btn.dataset.installIosHelp || "To install on iPhone/iPad, use Share then Add to Home Screen.";
+  const genericHelp = btn.dataset.installGenericHelp || "To install this app, use your browser menu and choose Install app.";
+  const message = isIosLike() ? iosHelp : genericHelp;
+  window.alert(message);
+}
+
+function toggleInstallButton(visible) {
+  const btn = document.getElementById("install-app-btn");
+  if (!btn) return;
+  btn.classList.toggle("d-none", !visible);
+}
+
+function toggleInstalledBadge(visible) {
+  const badge = document.getElementById("app-installed-badge");
+  if (!badge) return;
+  badge.classList.toggle("d-none", !visible);
+}
+
+function refreshInstallUi() {
+  const standalone = isStandaloneMode();
+  toggleInstalledBadge(standalone);
+  toggleInstallButton(!standalone);
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  refreshInstallUi();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  refreshInstallUi();
+});
+
+window.addEventListener("load", () => {
+    const installBtn = document.getElementById("install-app-btn");
+    if (installBtn) {
+      refreshInstallUi();
+
+      installBtn.addEventListener("click", async () => {
+        if (await triggerNativeInstall()) return;
+
+        if ("serviceWorker" in navigator) {
+          try {
+            const reg = await Promise.race([
+              navigator.serviceWorker.ready,
+              wait(2500).then(() => null),
+            ]);
+            if (reg && typeof reg.update === "function") {
+              reg.update().catch(() => {});
+            }
+          } catch (e) {
+            console.warn("SW ready wait failed", e);
+          }
+        }
+
+        await wait(250);
+        if (await waitForInstallPrompt(3000) && await triggerNativeInstall()) {
+          return;
+        }
+
+        if (isChromiumDesktop()) {
+          window.alert("Chrome nu a expus prompt-ul nativ acum. Verifica iconita de instalare din bara de adresa sau meniul Chrome > Install Sauna.");
+          return;
+        }
+
+        showInstallFallback();
+      });
+    }
+
+    const displayModeQuery = window.matchMedia("(display-mode: standalone)");
+    if (typeof displayModeQuery.addEventListener === "function") {
+      displayModeQuery.addEventListener("change", refreshInstallUi);
+    } else if (typeof displayModeQuery.addListener === "function") {
+      displayModeQuery.addListener(refreshInstallUi);
+    }
+    document.addEventListener("visibilitychange", refreshInstallUi);
+
+    if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((regs) => {
+        regs.forEach((reg) => {
+          if (reg.scope.includes("/static/pwa/")) {
+            reg.unregister();
+          }
+        });
+      })
+      .catch(() => {});
+
+    navigator.serviceWorker.register("/sw.js?v=10", { scope: "/", updateViaCache: "none" })
+      .then((reg) => {
+        console.log("Service Worker registered");
+
+        reg.addEventListener("updatefound", () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          window.location.reload();
+        });
+      })
+      .catch(err => console.error("SW registration failed:", err));
+    }
+  });
+</script>
