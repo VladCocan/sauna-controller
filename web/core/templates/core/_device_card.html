@@ -95,6 +95,49 @@
                 </div>
               </div>
 
+              <div class="col-6">
+                <div class="p-3 bg-light border rounded">
+                  <div class="text-muted small mb-1">{% trans "ETA to Setpoint" %}</div>
+                  <div class="h5 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="p-3 bg-light border rounded">
+                  <div class="text-muted small mb-1">{% trans "Control Temp" %}</div>
+                  <div class="h5 mb-0"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|default:"—" }}</span>°C</div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="p-3 bg-light border rounded">
+                  <div class="text-muted small mb-1">{% trans "Control Temp Source" %}</div>
+                  <div class="h5 mb-0" id="control-temp-source-{{ d.device_id }}">
+                    {% if s.control_temp_source_active %}
+                      {{ s.control_temp_source_active }}
+                    {% elif s.control_temp_source %}
+                      {{ s.control_temp_source }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="p-3 bg-light border rounded">
+                  <div class="text-muted small mb-1">{% trans "Control Temp Valid" %}</div>
+                  <div class="h5 mb-0" id="control-temp-valid-{{ d.device_id }}">{{ s.control_temp_valid|default:"—" }}</div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="p-3 bg-light border rounded">
+                  <div class="text-muted small mb-1">{% trans "Strat Delta" %}</div>
+                  <div class="h5 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|default:"—" }}</span>°C</div>
+                </div>
+              </div>
+
               <div class="col-12">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-2">{% trans "Temperature Chart" %}</div>

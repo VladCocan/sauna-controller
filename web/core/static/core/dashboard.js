@@ -76,6 +76,17 @@ function formatDiagValue(value) {
   return String(value);
 }
 
+function formatEtaMinutes(value) {
+  const minutes = Number(value);
+  if (!Number.isFinite(minutes) || minutes < 0) return "-";
+
+  const totalMinutes = Math.round(minutes);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+
+  return String(hours).padStart(2, "0") + ":" + String(mins).padStart(2, "0");
+}
+
 function firstAvailable(source, keys) {
   for (let i = 0; i < keys.length; i += 1) {
     const key = keys[i];
@@ -521,6 +532,12 @@ async function refreshDevice(deviceId) {
     setText("thead-" + deviceId, s.t_head_c);
     setText("tunder-" + deviceId, s.t_under_c);
     setText("heater-power-" + deviceId, s.t_outdoor_c);
+    setText("control-temp-value-" + deviceId, s.t_control);
+    setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
+    setText("control-temp-valid-" + deviceId, s.control_temp_valid);
+    setText("control-strat-delta-" + deviceId, s.strat_delta_c);
+    const etaToSetpointMin = firstAvailable(s, ["eta_auto_min", "eta_pred_min"]);
+    setText("eta-setpoint-" + deviceId, formatEtaMinutes(etaToSetpointMin));
 
     setToggleUI(deviceId, "fan", fanOn);
     setToggleUI(deviceId, "light", lightOn);
