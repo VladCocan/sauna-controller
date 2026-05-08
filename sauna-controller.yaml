@@ -1147,9 +1147,11 @@ climate:
     heat_output: pid_heat_output
 
     control_parameters:
-      kp: 0.02
-      ki: 0.0002
-      kd: 0.01
+      kp: 0.15
+      ki: 0.0005
+      kd: 0
+      min_integral: -0.15
+      max_integral: 0.15
 
     visual:
       min_temperature: 30
@@ -1160,8 +1162,15 @@ climate:
       threshold_high: 0.3
       threshold_low: -0.3
     
+
+    
     on_state:
       - lambda: |-
+          ESP_LOGD("PID", "p=%.3f i=%.3f d=%.3f out=%.3f",
+            id(sauna_climate).get_proportional_term(),
+            id(sauna_climate).get_integral_term(),
+            id(sauna_climate).get_derivative_term(),
+            id(sauna_climate).get_output_value());
           if (id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT) {
             id(heat_request_ms) = millis();
           } else {
