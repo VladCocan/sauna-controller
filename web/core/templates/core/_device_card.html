@@ -63,35 +63,35 @@
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Setpoint" %}</div>
-                  <div class="h5 mb-0"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Temperature Top" %}</div>
-                  <div class="h5 mb-0"><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Temperature Head" %}</div>
-                  <div class="h5 mb-0"><span id="thead-{{ d.device_id }}">{{ s.t_head_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="thead-{{ d.device_id }}">{{ s.t_head_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Temperature Under" %}</div>
-                  <div class="h5 mb-0"><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Outdoor" %}</div>
-                  <div class="h5 mb-0"><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
@@ -105,7 +105,7 @@
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Control Temp" %}</div>
-                  <div class="h5 mb-0"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 
@@ -134,7 +134,7 @@
               <div class="col-6">
                 <div class="p-3 bg-light border rounded">
                   <div class="text-muted small mb-1">{% trans "Strat Delta" %}</div>
-                  <div class="h5 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|default:"—" }}</span>°C</div>
+                  <div class="h5 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|floatformat:1|default:"—" }}</span>°C</div>
                 </div>
               </div>
 

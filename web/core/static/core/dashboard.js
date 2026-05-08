@@ -30,6 +30,12 @@ function setText(id, v) {
   el.textContent = v === null || v === undefined || v === "" ? "-" : String(v);
 }
 
+function formatTemperature(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return value;
+  return n.toFixed(1);
+}
+
 function setOnlineBadge(deviceId, online) {
   const el = document.getElementById("online-" + deviceId);
   if (!el) return;
@@ -540,15 +546,15 @@ async function refreshDevice(deviceId) {
 
     const effectiveSetpoint = getEffectiveSetpoint(deviceId, s.setpoint_c);
 
-    setText("sp-" + deviceId, effectiveSetpoint);
-    setText("ttop-" + deviceId, s.t_top_c);
-    setText("thead-" + deviceId, s.t_head_c);
-    setText("tunder-" + deviceId, s.t_under_c);
-    setText("outdoor-temp-" + deviceId, s.t_outdoor_c);
-    setText("control-temp-value-" + deviceId, s.t_control);
+    setText("sp-" + deviceId, formatTemperature(effectiveSetpoint));
+    setText("ttop-" + deviceId, formatTemperature(s.t_top_c));
+    setText("thead-" + deviceId, formatTemperature(s.t_head_c));
+    setText("tunder-" + deviceId, formatTemperature(s.t_under_c));
+    setText("outdoor-temp-" + deviceId, formatTemperature(s.t_outdoor_c));
+    setText("control-temp-value-" + deviceId, formatTemperature(s.t_control));
     setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
     setText("control-temp-valid-" + deviceId, s.control_temp_valid);
-    setText("control-strat-delta-" + deviceId, s.strat_delta_c);
+    setText("control-strat-delta-" + deviceId, formatTemperature(s.strat_delta_c));
     const etaToSetpointMin = firstAvailable(s, ["eta_auto_min", "eta_pred_min"]);
     setText("eta-setpoint-" + deviceId, formatEtaMinutes(etaToSetpointMin));
 
