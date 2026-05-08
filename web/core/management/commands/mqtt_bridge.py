@@ -4,13 +4,13 @@ import paho.mqtt.client as mqtt
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from core.mqtt_bridge import ingest_telemetry_payload, mqtt_enabled
+from core.mqtt_bridge import ingest_telemetry_payload, mqtt_enabled, register_persistent_client
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Consume telemetry messages from MQTT and persist them into Django."
+    help = "Consume telemetry from MQTT and persist to Django. Reuses the same connection for command publishes."
 
     def handle(self, *args, **options):
         if not mqtt_enabled():
@@ -35,6 +35,12 @@ class Command(BaseCommand):
             logger.info("MQTT bridge connected, subscribing to topic=%s", topic)
             client_obj.subscribe(topic, qos=1)
 
+            # Register for reuse by publish_command() in the same process.
+            register_persistent_client(client_obj)
+
+        def on_disconnect(_client_obj, _userdata, reason_code):
+            logger.warning("MQTT bridge disconnected, reason_code=%s - will reconnect.", reason_code)
+
         def on_message(_client_obj, _userdata, msg):
             try:
                 ingest_telemetry_payload(msg.payload)
@@ -42,6 +48,7 @@ class Command(BaseCommand):
                 logger.exception("Failed processing MQTT telemetry message on topic=%s", msg.topic)
 
         client.on_connect = on_connect
+        client.on_disconnect = on_disconnect
         client.on_message = on_message
         client.reconnect_delay_set(min_delay=1, max_delay=30)
 
