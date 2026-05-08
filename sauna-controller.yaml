@@ -793,6 +793,7 @@ number:
     step: 1
     initial_value: 15
     optimistic: true
+    restore_value: true
 
   - platform: template
     name: "Sauna Boost Exit (°C)"
@@ -803,6 +804,7 @@ number:
     step: 1
     initial_value: 5
     optimistic: true
+    restore_value: true
 
   - platform: template
     name: "Sauna Max Session (min)"

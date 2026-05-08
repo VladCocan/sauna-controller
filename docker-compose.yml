@@ -115,6 +115,35 @@ services:
       python manage.py mqtt_bridge
       "
 
+  telemetry_cleanup:
+    user: "1000:1000"
+    build: ./web
+    container_name: sauna_telemetry_cleanup
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./web:/app
+    environment:
+      DB_ENGINE: ${DB_ENGINE}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost
+    command: >
+      sh -c "
+      while true; do
+        python manage.py cleanup_telemetry --days 7;
+        sleep 86400;
+      done
+      "
+
 volumes:
   postgres_data:
   mqtt_data:

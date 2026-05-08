@@ -64,6 +64,8 @@ def telemetry_series(request):
             "t_head_c": s.get("t_head_c"),
             "t_under_c": s.get("t_under_c"),
             "setpoint_c": s.get("setpoint_c"),
+            "heater_power_pct": s.get("heater_power_pct"),
+            "contactor_active": s.get("contactor_active"),
             "mode": s.get("mode"),
         })
 

@@ -394,6 +394,8 @@ function ensureChart(deviceId) {
         { label: "T head", data: [], tension: 0.2 },
         { label: "T under", data: [], tension: 0.2 },
         { label: "Setpoint", data: [], tension: 0.2 },
+        { label: "Heater %", data: [], tension: 0.1, yAxisID: "y2", borderDash: [4, 3] },
+        { label: "Contactor", data: [], tension: 0, yAxisID: "y2", borderDash: [2, 2] },
       ],
     },
     options: {
@@ -402,7 +404,16 @@ function ensureChart(deviceId) {
       animation: false,
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { display: true }, tooltip: { enabled: true } },
-      scales: { x: { ticks: { maxRotation: 0, autoSkip: true } }, y: { beginAtZero: false } },
+      scales: {
+        x: { ticks: { maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: false },
+        y2: {
+          position: "right",
+          min: 0,
+          max: 110,
+          grid: { drawOnChartArea: false },
+        },
+      },
     },
   });
 
@@ -425,6 +436,8 @@ async function refreshChart(deviceId) {
   ch.data.datasets[1].data = rows.map(function (r) { return r.t_head_c; });
   ch.data.datasets[2].data = rows.map(function (r) { return r.t_under_c; });
   ch.data.datasets[3].data = rows.map(function (r) { return r.setpoint_c; });
+  ch.data.datasets[4].data = rows.map(function (r) { return r.heater_power_pct != null ? r.heater_power_pct : null; });
+  ch.data.datasets[5].data = rows.map(function (r) { return r.contactor_active != null ? (r.contactor_active ? 100 : 0) : null; });
   ch.update();
 }
 
@@ -531,7 +544,7 @@ async function refreshDevice(deviceId) {
     setText("ttop-" + deviceId, s.t_top_c);
     setText("thead-" + deviceId, s.t_head_c);
     setText("tunder-" + deviceId, s.t_under_c);
-    setText("heater-power-" + deviceId, s.t_outdoor_c);
+    setText("outdoor-temp-" + deviceId, s.t_outdoor_c);
     setText("control-temp-value-" + deviceId, s.t_control);
     setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
     setText("control-temp-valid-" + deviceId, s.control_temp_valid);
