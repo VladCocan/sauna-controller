@@ -235,7 +235,7 @@ mqtt:
             }
 
             ESP_LOGI("mqtt", "Command applied (id=%d, type=%s)", cmd_id, type);
-
+        - script.execute: publish_telemetry   
 
 # ================================
 # 1-Wire buses (separate GPIOs)
@@ -1185,6 +1185,85 @@ climate:
           }
 
 
+script:
+  - id: publish_telemetry
+    mode: single
+    then:
+      - mqtt.publish_json:
+          topic: ${mqtt_topic_base}/telemetry
+          qos: 0
+          payload: |-
+            bool eta_learning_active = (
+              id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
+              !isnan(id(t_control).state) &&
+              !isnan(id(t_outdoor).state) &&
+              id(contactor_on)
+            );
+
+            double thermal_ua = NAN;
+            double thermal_c = NAN;
+            double thermal_tau = NAN;
+            if (id(th_a) > 0.0) {
+              thermal_ua = (-id(th_c)) / id(th_a);
+              thermal_c = (1.0 / id(th_a)) / 1000.0;
+            }
+            if (id(th_c) < -1e-9) {
+              thermal_tau = (-1.0 / id(th_c)) / 60.0;
+            }
+
+            std::string control_src = id(control_temp_source).current_option().c_str();
+            if (control_src.empty()) control_src = "Average (Top+Head)";
+
+            root["device_id"] = "${internalname}";
+            JsonObject status = root["status"].to<JsonObject>();
+            status["t_top_c"] = isnan(id(t_top).state) ? 0.0f : id(t_top).state;
+            status["t_head_c"] = isnan(id(t_head).state) ? 0.0f : id(t_head).state;
+            status["t_under_c"] = isnan(id(t_under).state) ? 0.0f : id(t_under).state;
+            status["t_outdoor_c"] = isnan(id(t_outdoor).state) ? 0.0f : id(t_outdoor).state;
+            status["t_control"] = isnan(id(t_control).state) ? 0.0f : id(t_control).state;
+            status["strat_delta_c"] = isnan(id(d_strat).state) ? 0.0f : id(d_strat).state;
+            status["mode"] = id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT ? "HEAT" : "OFF";
+            status["setpoint_c"] = id(sauna_climate).target_temperature;
+            status["heater_power_pct"] = id(pid_duty) * 100.0f;
+            status["fan_on"] = id(fan_destrat).state;
+            status["light_on"] = id(sauna_light).current_values.is_on();
+            status["amp_on"] = id(sauna_amp).state;
+            status["contactor_active"] = id(contactor_on);
+            status["boost_active"] = id(boost_active);
+            status["sensor_fault"] = id(sensor_fault_active);
+            status["power_w"] = isnan(id(sauna_power_w).state) ? 0.0f : id(sauna_power_w).state;
+            status["heat_loss_w"] = isnan(id(sauna_heat_loss_w).state) ? 0.0f : id(sauna_heat_loss_w).state;
+            status["heat_loss_kw"] = isnan(id(sauna_heat_loss_kw).state) ? 0.0f : id(sauna_heat_loss_kw).state;
+            status["heating_headroom_kw"] = isnan(id(sauna_heating_headroom_kw).state) ? 0.0f : id(sauna_heating_headroom_kw).state;
+            status["boost_window_c"] = id(boost_window).state;
+            status["boost_exit_c"] = id(boost_exit).state;
+            status["max_session_min"] = id(max_session_min).state;
+            status["fan_dt_setpoint_c"] = id(fan_dt_sp).state;
+            status["control_temp_source"] = control_src.c_str();
+            status["control_temp_source_active"] = id(control_temp_source_active).state.c_str();
+            status["control_temp_valid"] = isnan(id(control_temp_valid).state) ? 0.0f : id(control_temp_valid).state;
+            status["oven_runtime_s"] = id(oven_runtime_s);
+            status["fan_runtime_s"] = id(fan_runtime_s);
+            status["light_runtime_s"] = id(light_runtime_s);
+            status["amp_runtime_s"] = id(amp_runtime_s);
+            status["energy_wh"] = isnan(id(sauna_energy_wh).state) ? 0.0f : id(sauna_energy_wh).state;
+            status["energy_kwh"] = isnan(id(sauna_energy_kwh).state) ? 0.0f : id(sauna_energy_kwh).state;
+            status["eta_model_a"] = isnan(id(eta_A_sensor).state) ? 0.0f : id(eta_A_sensor).state;
+            status["eta_model_b"] = isnan(id(eta_B_sensor).state) ? 0.0f : id(eta_B_sensor).state;
+            status["eta_auto_min"] = isnan(id(sauna_eta_min).state) ? 0.0f : id(sauna_eta_min).state;
+            status["eta_pred_min"] = isnan(id(sauna_eta_min_pred).state) ? 0.0f : id(sauna_eta_min_pred).state;
+            status["eta_samples"] = id(eta_n);
+            status["eta_rmse"] = isnan(id(eta_rmse).state) ? 0.0f : id(eta_rmse).state;
+            status["eta_confidence"] = isnan(id(eta_confidence).state) ? 0.0f : id(eta_confidence).state;
+            status["eta_pred_rate"] = isnan(id(eta_rate_pred).state) ? 0.0f : id(eta_rate_pred).state;
+            status["eta_learning_active"] = eta_learning_active;
+            status["thermal_model_samples"] = id(th_n);
+            status["thermal_ua"] = isnan(thermal_ua) ? 0.0f : (float) thermal_ua;
+            status["thermal_c"] = isnan(thermal_c) ? 0.0f : (float) thermal_c;
+            status["thermal_tau"] = isnan(thermal_tau) ? 0.0f : (float) thermal_tau;
+            status["uptime_seconds"] = (unsigned long)(millis() / 1000);
+            root["last_ack_id"] = id(last_ack_id);
+
 # ================================
 # Main control loop (safety, session, boost, windowing, models)
 # Runs every 1s and is the "single source of truth" for heater behavior.
@@ -1624,89 +1703,12 @@ interval:
                 id: sauna_climate
                 mode: 'OFF'
 
+
   # Publish telemetry snapshot to MQTT.
   - interval: 20s
     then:
-      - mqtt.publish_json:
-          topic: ${mqtt_topic_base}/telemetry
-          qos: 0
-          payload: |-
-            bool eta_learning_active = (
-              id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT &&
-              !isnan(id(t_control).state) &&
-              !isnan(id(t_outdoor).state) &&
-              id(contactor_on)
-            );
-
-            double thermal_ua = NAN;
-            double thermal_c = NAN;
-            double thermal_tau = NAN;
-            if (id(th_a) > 0.0) {
-              thermal_ua = (-id(th_c)) / id(th_a);
-              thermal_c = (1.0 / id(th_a)) / 1000.0;
-            }
-            if (id(th_c) < -1e-9) {
-              thermal_tau = (-1.0 / id(th_c)) / 60.0;
-            }
-
-            std::string control_src = id(control_temp_source).current_option().c_str();
-            if (control_src.empty()) control_src = "Average (Top+Head)";
-
-            root["device_id"] = "${internalname}";
-            JsonObject status = root["status"].to<JsonObject>();
-            status["t_top_c"] = isnan(id(t_top).state) ? 0.0f : id(t_top).state;
-            status["t_head_c"] = isnan(id(t_head).state) ? 0.0f : id(t_head).state;
-            status["t_under_c"] = isnan(id(t_under).state) ? 0.0f : id(t_under).state;
-            status["t_outdoor_c"] = isnan(id(t_outdoor).state) ? 0.0f : id(t_outdoor).state;
-            status["t_control"] = isnan(id(t_control).state) ? 0.0f : id(t_control).state;
-            status["strat_delta_c"] = isnan(id(d_strat).state) ? 0.0f : id(d_strat).state;
-            status["mode"] = id(sauna_climate).mode == climate::CLIMATE_MODE_HEAT ? "HEAT" : "OFF";
-            status["setpoint_c"] = id(sauna_climate).target_temperature;
-            status["heater_power_pct"] = id(pid_duty) * 100.0f;
-            status["fan_on"] = id(fan_destrat).state;
-            status["light_on"] = id(sauna_light).current_values.is_on();
-            status["amp_on"] = id(sauna_amp).state;
-            status["contactor_active"] = id(contactor_on);
-            status["boost_active"] = id(boost_active);
-            status["sensor_fault"] = id(sensor_fault_active);
-            status["power_w"] = isnan(id(sauna_power_w).state) ? 0.0f : id(sauna_power_w).state;
-            status["heat_loss_w"] = isnan(id(sauna_heat_loss_w).state) ? 0.0f : id(sauna_heat_loss_w).state;
-            status["heat_loss_kw"] = isnan(id(sauna_heat_loss_kw).state) ? 0.0f : id(sauna_heat_loss_kw).state;
-            status["heating_headroom_kw"] = isnan(id(sauna_heating_headroom_kw).state) ? 0.0f : id(sauna_heating_headroom_kw).state;
-
-            status["boost_window_c"] = id(boost_window).state;
-            status["boost_exit_c"] = id(boost_exit).state;
-            status["max_session_min"] = id(max_session_min).state;
-            status["fan_dt_setpoint_c"] = id(fan_dt_sp).state;
-            status["control_temp_source"] = control_src.c_str();
-            status["control_temp_source_active"] = id(control_temp_source_active).state.c_str();
-            status["control_temp_valid"] = isnan(id(control_temp_valid).state) ? 0.0f : id(control_temp_valid).state;
-
-            status["oven_runtime_s"] = id(oven_runtime_s);
-            status["fan_runtime_s"] = id(fan_runtime_s);
-            status["light_runtime_s"] = id(light_runtime_s);
-            status["amp_runtime_s"] = id(amp_runtime_s);
-            status["energy_wh"] = isnan(id(sauna_energy_wh).state) ? 0.0f : id(sauna_energy_wh).state;
-            status["energy_kwh"] = isnan(id(sauna_energy_kwh).state) ? 0.0f : id(sauna_energy_kwh).state;
-
-            status["eta_model_a"] = isnan(id(eta_A_sensor).state) ? 0.0f : id(eta_A_sensor).state;
-            status["eta_model_b"] = isnan(id(eta_B_sensor).state) ? 0.0f : id(eta_B_sensor).state;
-            status["eta_auto_min"] = isnan(id(sauna_eta_min).state) ? 0.0f : id(sauna_eta_min).state;
-            status["eta_pred_min"] = isnan(id(sauna_eta_min_pred).state) ? 0.0f : id(sauna_eta_min_pred).state;
-            status["eta_samples"] = id(eta_n);
-            status["eta_rmse"] = isnan(id(eta_rmse).state) ? 0.0f : id(eta_rmse).state;
-            status["eta_confidence"] = isnan(id(eta_confidence).state) ? 0.0f : id(eta_confidence).state;
-            status["eta_pred_rate"] = isnan(id(eta_rate_pred).state) ? 0.0f : id(eta_rate_pred).state;
-            status["eta_learning_active"] = eta_learning_active;
-
-            status["thermal_model_samples"] = id(th_n);
-            status["thermal_ua"] = isnan(thermal_ua) ? 0.0f : (float) thermal_ua;
-            status["thermal_c"] = isnan(thermal_c) ? 0.0f : (float) thermal_c;
-            status["thermal_tau"] = isnan(thermal_tau) ? 0.0f : (float) thermal_tau;
-
-            status["uptime_seconds"] = (unsigned long)(millis() / 1000);
-            root["last_ack_id"] = id(last_ack_id);
-
+      - script.execute: publish_telemetry
+      
 
 # ================================
 # MQTT Integration
