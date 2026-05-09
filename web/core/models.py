@@ -47,9 +47,11 @@ class Telemetry(models.Model):
 class Command(models.Model):
     STATUS_PENDING = "PENDING"
     STATUS_ACKED = "ACKED"
+    STATUS_EXPIRED = "expired"
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_ACKED, "Acked"),
+        (STATUS_EXPIRED, "Expired"),
     ]
 
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="commands")

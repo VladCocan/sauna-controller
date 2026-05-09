@@ -1,8 +1,18 @@
 // ---------- Helpers ----------
 async function getJSON(url) {
-  const r = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  return await r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const r = await fetch(url, {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const I18N = window.SAUNA_I18N || {};
@@ -594,14 +604,6 @@ async function refreshDevice(deviceId) {
   }
 }
 
-async function refreshAll() {
-  const devices = getAllDeviceIds();
-  if (!devices.length) return;
-
-  const selected = localStorage.getItem(STORAGE_KEY) || devices[0];
-  await refreshDevice(selected);
-}
-
 document.addEventListener("click", async function (ev) {
   const btn = ev.target.closest(".chart-range");
   if (!btn) return;
@@ -783,6 +785,31 @@ document.addEventListener("change", function (e) {
   form.requestSubmit();
 });
 
+let _polling = false;
+
+async function refreshAll() {
+  if (_polling) return;
+  _polling = true;
+  try {
+    const devices = getAllDeviceIds();
+    if (!devices.length) return;
+    const selected = localStorage.getItem(STORAGE_KEY) || devices[0];
+    await refreshDevice(selected);
+  } finally {
+    _polling = false;
+  }
+}
+
 initDeviceSelection();
 refreshAll();
-setInterval(refreshAll, 3000);
+
+let _pollInterval = setInterval(refreshAll, 3000);
+
+document.addEventListener("visibilitychange", function () {
+  if (document.hidden) {
+    clearInterval(_pollInterval);
+  } else {
+    refreshAll();
+    _pollInterval = setInterval(refreshAll, 3000);
+  }
+});

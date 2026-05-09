@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 import threading
 
 import paho.mqtt.client as mqtt
@@ -7,6 +8,9 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import Command, Device, Telemetry
+
+from datetime import timedelta
+
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +152,35 @@ def ingest_telemetry_payload(raw_payload: bytes) -> None:
         dev.last_ack_id = ack_id
         update_fields.append("last_ack_id")
     dev.save(update_fields=update_fields)
+
+
+def _retry_pending_commands():
+    while True:
+        try:
+            now = timezone.now()
+            cutoff = now - timedelta(seconds=15)
+            max_age = now - timedelta(minutes=10)
+
+            Command.objects.filter(
+                status=Command.STATUS_PENDING,
+                created_at__lt=max_age,
+            ).update(status=Command.STATUS_EXPIRED)
+
+            stale = Command.objects.filter(
+                status=Command.STATUS_PENDING,
+                created_at__lt=cutoff,
+            ).select_related("device")
+            for cmd in stale:
+                try:
+                    publish_command(cmd)
+                    logger.info("Retried command %s", cmd.id)
+                except Exception:
+                    logger.exception("Retry failed for command %s", cmd.id)
+        except Exception:
+            logger.exception("Retry loop error")
+        time.sleep(10)
+
+def start_retry_loop() -> None:
+    """Start retry thread in processes that should handle command retries."""
+    retry_thread = threading.Thread(target=_retry_pending_commands, daemon=True)
+    retry_thread.start()

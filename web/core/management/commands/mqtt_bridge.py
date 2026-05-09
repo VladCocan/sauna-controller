@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from core.mqtt_bridge import ingest_telemetry_payload, mqtt_enabled, register_persistent_client
+from core.mqtt_bridge import ingest_telemetry_payload, mqtt_enabled, register_persistent_client, start_retry_loop
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class Command(BaseCommand):
 
             # Register for reuse by publish_command() in the same process.
             register_persistent_client(client_obj)
+            start_retry_loop()
 
         def on_disconnect(_client_obj, _userdata, reason_code):
             logger.warning("MQTT bridge disconnected, reason_code=%s - will reconnect.", reason_code)
