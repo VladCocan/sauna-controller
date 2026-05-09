@@ -7,6 +7,11 @@ from django.contrib.auth.hashers import make_password, check_password
 
 class Device(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="devices")
+    shared_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="shared_devices",
+        blank=True,
+    )
     device_id = models.CharField(max_length=100, unique=True)
 
     # Bearer token stocat hash-uit (ca parola)

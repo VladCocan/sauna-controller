@@ -4,6 +4,7 @@ from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from pathlib import Path
+from django.db.models import Q
 
 from .models import Device, Telemetry, Command
 
@@ -36,6 +37,16 @@ BUTTON_COMMANDS = {
 }
 
 
+def get_device_for_user(device_id: str, user):
+    """Return the device if the user is the owner OR a shared_user."""
+    return get_object_or_404(
+        Device.objects.filter(
+            Q(owner=user) | Q(shared_users=user)
+        ).distinct(),
+        device_id=device_id,
+    )
+
+
 @login_required
 @require_GET
 def telemetry_series(request):
@@ -46,7 +57,7 @@ def telemetry_series(request):
     hours = float(request.GET.get("hours", "2"))
     limit = int(request.GET.get("limit", "480"))
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
     since = timezone.now() - timedelta(hours=hours)
 
     qs = (
@@ -79,7 +90,7 @@ def device_status(request):
     if not device_id:
         return JsonResponse({"error": "missing_device_id"}, status=400)
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
     t = Telemetry.objects.filter(device=dev).order_by("-ts").first()
 
     now = timezone.now()
@@ -105,7 +116,7 @@ def device_commands(request):
     if not device_id:
         return JsonResponse({"error": "missing_device_id"}, status=400)
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
     qs = Command.objects.filter(device=dev, status=Command.STATUS_PENDING).order_by("-id")[:20]
     return JsonResponse({
         "pending": [{"id": c.id, "type": c.cmd_type, "payload": c.payload, "created_at": c.created_at.isoformat()} for c in qs]
@@ -114,7 +125,11 @@ def device_commands(request):
 
 @login_required
 def dashboard(request):
-    devices = list(request.user.devices.all().order_by("device_id"))
+    devices = list(
+        Device.objects.filter(
+            Q(owner=request.user) | Q(shared_users=request.user)
+        ).distinct().order_by("device_id")
+    )
 
     latest = {}
     for d in devices:
@@ -139,7 +154,7 @@ def set_climate(request):
     if not device_id or mode not in ("OFF", "HEAT"):
         return HttpResponseBadRequest("bad request")
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
 
     payload = {"mode": mode}
     if setpoint_raw != "":
@@ -162,7 +177,7 @@ def set_switch(request):
     if not device_id or what not in ("fan", "light", "amp") or on_raw not in ("0", "1"):
         return HttpResponseBadRequest("bad request")
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
     on = (on_raw == "1")
 
     if what == "fan":
@@ -189,7 +204,7 @@ def set_diagnostic(request):
     if not device_id or kind not in ("number", "select", "button") or not key:
         return HttpResponseBadRequest("bad request")
 
-    dev = get_object_or_404(Device, device_id=device_id, owner=request.user)
+    dev = get_device_for_user(device_id, request.user)
 
     if kind == "number":
         spec = NUMBER_COMMAND_SPECS.get(key)

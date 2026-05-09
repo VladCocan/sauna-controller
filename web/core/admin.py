@@ -17,6 +17,7 @@ class DeviceAdmin(admin.ModelAdmin):
     list_display = ("device_id", "owner", "last_seen", "last_ack_id")
     search_fields = ("device_id", "owner__username", "owner__email")
     list_filter = ("owner",)
+    filter_horizontal = ("shared_users",)
     actions = [rotate_device_token]
 
 
