@@ -61,6 +61,11 @@ psram:
 # Logging
 logger:
   level: WARN
+  logs:
+    sensor: ERROR
+    text_sensor: ERROR
+    climate: ERROR
+    binary_sensor: ERROR
 
 # Home Assistant API
 api:
