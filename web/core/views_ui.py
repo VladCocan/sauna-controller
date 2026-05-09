@@ -166,8 +166,8 @@ def set_climate(request):
         except ValueError:
             return HttpResponseBadRequest("bad setpoint")
 
-    Command.objects.create(device=dev, cmd_type="set_climate", payload=payload)
-    return JsonResponse({"ok": True})
+    cmd = Command.objects.create(device=dev, cmd_type="set_climate", payload=payload)
+    return JsonResponse({"ok": True, "command_id": cmd.id})
 
 
 @login_required
@@ -193,8 +193,8 @@ def set_switch(request):
         cmd_type = "set_amp"
         payload = {"on": on}
 
-    Command.objects.create(device=dev, cmd_type=cmd_type, payload=payload)
-    return JsonResponse({"ok": True})
+    cmd = Command.objects.create(device=dev, cmd_type=cmd_type, payload=payload)
+    return JsonResponse({"ok": True, "command_id": cmd.id})
 
 
 @login_required
@@ -223,12 +223,12 @@ def set_diagnostic(request):
         if value < spec["min"] or value > spec["max"]:
             return HttpResponseBadRequest("value out of range")
 
-        Command.objects.create(
+        cmd = Command.objects.create(
             device=dev,
             cmd_type="set_number",
             payload={"name": key, "value": value},
         )
-        return JsonResponse({"ok": True})
+        return JsonResponse({"ok": True, "command_id": cmd.id})
 
     if kind == "select":
         spec = SELECT_COMMAND_SPECS.get(key)
@@ -236,22 +236,22 @@ def set_diagnostic(request):
         if not spec or option not in spec["options"]:
             return HttpResponseBadRequest("bad option")
 
-        Command.objects.create(
+        cmd = Command.objects.create(
             device=dev,
             cmd_type="set_select",
             payload={"name": key, "option": option},
         )
-        return JsonResponse({"ok": True})
+        return JsonResponse({"ok": True, "command_id": cmd.id})
 
     if key not in BUTTON_COMMANDS:
         return HttpResponseBadRequest("bad button")
 
-    Command.objects.create(
+    cmd = Command.objects.create(
         device=dev,
         cmd_type="press_button",
         payload={"name": key},
     )
-    return JsonResponse({"ok": True})
+    return JsonResponse({"ok": True, "command_id": cmd.id})
 
 
 @login_required
@@ -260,9 +260,23 @@ def device_sse(request, device_id):
     """Server-Sent Events stream — DB polling, works across processes."""
     dev = get_device_for_user(device_id, request.user)
 
+    def sse(event=None, data=None, comment=None):
+        if comment is not None:
+            return f": {comment}\n\n"
+        payload = json.dumps(data or {}, separators=(",", ":"))
+        if event:
+            return f"event: {event}\ndata: {payload}\n\n"
+        return f"data: {payload}\n\n"
+
     def event_stream():
-        last_ts = timezone.now()
         yield "retry: 3000\n\n"
+
+        latest = Telemetry.objects.filter(device=dev).order_by("-ts").first()
+        last_ts = latest.ts if latest else timezone.now()
+        if latest:
+            yield sse("telemetry", latest.payload)
+
+        last_ping = time.monotonic()
         while True:
             t = (
                 Telemetry.objects
@@ -272,9 +286,14 @@ def device_sse(request, device_id):
             )
             if t:
                 last_ts = t.ts
-                yield f"data: {json.dumps(t.payload)}\n\n"
-            else:
-                yield ": keepalive\n\n"
+                yield sse("telemetry", t.payload)
+                continue
+
+            now = time.monotonic()
+            if now - last_ping >= 15:
+                last_ping = now
+                yield sse("ping", {"ts": int(time.time())})
+
             time.sleep(1)
 
     return StreamingHttpResponse(

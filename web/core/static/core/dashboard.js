@@ -248,7 +248,11 @@ function setActiveDevice(deviceId) {
   if (!selected) return;
 
   selected.style.display = "block";
+  const previousDeviceId = localStorage.getItem(STORAGE_KEY);
   localStorage.setItem(STORAGE_KEY, deviceId);
+  if (previousDeviceId !== deviceId) {
+    document.dispatchEvent(new CustomEvent("deviceSelected", { detail: { deviceId: deviceId } }));
+  }
 
   const sel = document.getElementById("device-select");
   if (sel) sel.value = deviceId;
@@ -278,6 +282,49 @@ const setpointOptimistic = {};
 const modeOptimistic = {};
 const controlOptimistic = {};
 const deviceTruth = {};
+const pendingCommands = {};
+const COMMAND_DEBOUNCE_MS = 600;
+
+function rememberPendingCommand(deviceId, commandId, label) {
+  const id = Number(commandId);
+  if (!deviceId || !Number.isFinite(id) || id <= 0) return;
+  if (!pendingCommands[deviceId]) pendingCommands[deviceId] = {};
+  pendingCommands[deviceId][id] = { label: label || "command", ts: Date.now() };
+  renderPendingCommands(deviceId);
+}
+
+function acknowledgeCommands(deviceId, ackId) {
+  const ack = Number(ackId);
+  if (!deviceId || !Number.isFinite(ack) || ack <= 0 || !pendingCommands[deviceId]) return;
+
+  let changed = false;
+  Object.keys(pendingCommands[deviceId]).forEach(function (id) {
+    if (Number(id) <= ack) {
+      delete pendingCommands[deviceId][id];
+      changed = true;
+    }
+  });
+
+  if (Object.keys(pendingCommands[deviceId]).length === 0) delete pendingCommands[deviceId];
+  if (changed) {
+    renderPendingCommands(deviceId);
+    toast(t("commandApplied", "Command applied"), "success");
+  }
+}
+
+function renderPendingCommands(deviceId) {
+  const el = document.getElementById("cmds-" + deviceId);
+  if (!el) return;
+  const cmds = pendingCommands[deviceId] || {};
+  const ids = Object.keys(cmds).sort(function (a, b) { return Number(a) - Number(b); });
+  if (!ids.length) {
+    el.textContent = "[]";
+    return;
+  }
+  el.textContent = JSON.stringify(ids.map(function (id) {
+    return { id: Number(id), label: cmds[id].label, pending_ms: Date.now() - cmds[id].ts };
+  }), null, 2);
+}
 
 function setSetpointOptimistic(deviceId, value, ttlMs) {
   const ttl = ttlMs || 8000;
@@ -495,6 +542,32 @@ function setModeUI(deviceId, mode) {
   modeOffRadio.checked = normalized !== "HEAT";
 }
 
+function renderHeaterMode(deviceId, requestedMode, status) {
+  const modeEl = document.getElementById("mode-" + deviceId);
+  if (!modeEl) return;
+
+  const s = status || {};
+  const requested = String(requestedMode || s.mode || "OFF").toUpperCase() === "HEAT" ? "HEAT" : "OFF";
+  const contactor = s.contactor_active;
+  const heaterPct = Number(s.heater_power_pct || 0);
+  const actualOn = contactor === true || heaterPct > 0;
+
+  let badgeClass = "text-bg-secondary";
+  let label = "OFF";
+
+  if (actualOn) {
+    badgeClass = "text-bg-success";
+    label = "ON";
+  } else if (requested === "HEAT") {
+    badgeClass = "text-bg-warning";
+    label = "HEAT pending";
+  }
+
+  const contactorLabel = contactor === true ? "Contactor ON" : (contactor === false ? "Contactor OFF" : "Contactor —");
+  modeEl.innerHTML = '<span class="badge ' + badgeClass + '">' + label + '</span>' +
+    '<div class="small text-muted mt-1">Mode: ' + requested + ' · ' + contactorLabel + '</div>';
+}
+
 async function refreshDevice(deviceId) {
   try {
     const st = await getJSON("/api/device_status?device_id=" + encodeURIComponent(deviceId));
@@ -503,6 +576,7 @@ async function refreshDevice(deviceId) {
     setOnlineBadge(deviceId, !!st.online);
     setText("online-status-" + deviceId, st.online ? t("online", "ONLINE") : t("offline", "OFFLINE"));
     setText("last-ack-" + deviceId, st.last_ack_id);
+    acknowledgeCommands(deviceId, st.last_ack_id);
     setText("lastseen-" + deviceId, st.last_seen ? new Date(st.last_seen).toLocaleString() : "-");
 
     const mode = getEffectiveMode(deviceId, s.mode);
@@ -546,13 +620,7 @@ async function refreshDevice(deviceId) {
         : '<span class="badge text-bg-secondary"><i class="bi bi-speaker"></i> ' + t("ampOffLabel", "Amplifier off") + "</span>";
     }
 
-    const modeEl = document.getElementById("mode-" + deviceId);
-    if (modeEl) {
-      const isHeaterOn = mode === "HEAT" || (s.heater_power_pct || 0) > 0;
-      modeEl.innerHTML = isHeaterOn
-        ? '<span class="badge text-bg-success">' + t("on", "ON") + "</span>"
-        : '<span class="badge text-bg-secondary">' + t("off", "OFF") + "</span>";
-    }
+    renderHeaterMode(deviceId, mode, s);
 
     const effectiveSetpoint = getEffectiveSetpoint(deviceId, s.setpoint_c);
 
@@ -587,11 +655,7 @@ async function refreshDevice(deviceId) {
     syncDiagnosticControls(deviceId, s);
     renderDiagnostics(deviceId, s);
 
-    const cmdsEl = document.getElementById("cmds-" + deviceId);
-    if (cmdsEl) {
-      const c = await getJSON("/api/device_commands?device_id=" + encodeURIComponent(deviceId));
-      cmdsEl.textContent = JSON.stringify(c.pending || [], null, 2);
-    }
+    renderPendingCommands(deviceId);
   } catch (e) {
     setOnlineBadge(deviceId, false);
     setText("online-status-" + deviceId, t("offline", "OFFLINE"));
@@ -641,6 +705,14 @@ document.addEventListener("submit", async function (ev) {
     ev.preventDefault();
     return;
   }
+
+  const nowMs = Date.now();
+  const lastSubmitMs = Number(form.dataset.lastSubmitMs || 0);
+  if (nowMs - lastSubmitMs < COMMAND_DEBOUNCE_MS) {
+    ev.preventDefault();
+    return;
+  }
+  form.dataset.lastSubmitMs = String(nowMs);
 
   ev.preventDefault();
   form.dataset.submitting = "1";
@@ -709,9 +781,18 @@ document.addEventListener("submit", async function (ev) {
       return;
     }
 
-    toast(t("commandQueued", "Command queued"), "success");
+    let responseData = {};
+    try { responseData = await r.json(); } catch (_) {}
 
-    if (deviceId) await refreshDevice(deviceId);
+    if (deviceId && responseData.command_id) {
+      rememberPendingCommand(deviceId, responseData.command_id, formData.get("what") || formData.get("mode") || formData.get("key") || "command");
+      toast(t("commandQueued", "Command queued"), "primary");
+    } else {
+      toast(t("commandQueued", "Command queued"), "primary");
+    }
+
+    // UI already changed optimistically; SSE will confirm via last_ack_id.
+    if (deviceId) setTimeout(function () { renderPendingCommands(deviceId); }, 1000);
   } catch (e) {
     if (deviceId && formData.has("mode")) {
       clearModeOptimistic(deviceId);
@@ -808,25 +889,25 @@ function connectSSE(deviceId) {
     _es = null;
   }
   const es = new EventSource(`/sse/${encodeURIComponent(deviceId)}/`);
-es.onmessage = (e) => {
+
+  function handleTelemetryEvent(e) {
   try {
     const payload = JSON.parse(e.data);
-    const deviceId = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
-    if (!deviceId) return;
     const s = payload.status || {};
 
-    // Online status — dacă primim SSE, device-ul e online
+    // Online status — dacă primim SSE, device-ul și conexiunea sunt active.
     setOnlineBadge(deviceId, true);
     setText("online-status-" + deviceId, t("online", "ONLINE"));
     setText("last-ack-" + deviceId, payload.last_ack_id || "");
     setText("lastseen-" + deviceId, new Date().toLocaleString());
+    acknowledgeCommands(deviceId, payload.last_ack_id);
 
     const mode = getEffectiveMode(deviceId, s.mode);
     const fanOn = getEffectiveControl(deviceId, "fan", s.fan_on);
     const lightOn = getEffectiveControl(deviceId, "light", s.light_on);
     const ampOn = getEffectiveControl(deviceId, "amp", s.amp_on);
 
-    deviceTruth[deviceId] = { mode, fan: fanOn, light: lightOn, amp: ampOn };
+    deviceTruth[deviceId] = { mode: mode, fan: fanOn, light: lightOn, amp: ampOn };
 
     const saunaStatusEl = document.getElementById("sauna-status-" + deviceId);
     if (saunaStatusEl) {
@@ -857,13 +938,7 @@ es.onmessage = (e) => {
         : '<span class="badge text-bg-secondary"><i class="bi bi-speaker"></i> ' + t("ampOffLabel", "Amplifier off") + "</span>";
     }
 
-    const modeEl = document.getElementById("mode-" + deviceId);
-    if (modeEl) {
-      const isHeaterOn = mode === "HEAT" || (s.heater_power_pct || 0) > 0;
-      modeEl.innerHTML = isHeaterOn
-        ? '<span class="badge text-bg-success">' + t("on", "ON") + "</span>"
-        : '<span class="badge text-bg-secondary">' + t("off", "OFF") + "</span>";
-    }
+    renderHeaterMode(deviceId, mode, s);
 
     const effectiveSetpoint = getEffectiveSetpoint(deviceId, s.setpoint_c);
     setText("sp-" + deviceId, formatTemperature(effectiveSetpoint));
@@ -893,11 +968,19 @@ es.onmessage = (e) => {
 
     syncDiagnosticControls(deviceId, s);
     renderDiagnostics(deviceId, s);
-
-    // Graficul și comenzile — poll lent, nu la fiecare eveniment SSE
+    renderPendingCommands(deviceId);
   } catch (_) {}
-};
-  es.onerror = () => {};
+  }
+
+  es.addEventListener("telemetry", handleTelemetryEvent);
+  es.onmessage = handleTelemetryEvent;
+  es.addEventListener("ping", function () {
+    setOnlineBadge(deviceId, true);
+  });
+  es.onerror = function () {
+    setOnlineBadge(deviceId, false);
+    setText("online-status-" + deviceId, t("offline", "OFFLINE"));
+  };
   _es = es;
   return es;
 }
