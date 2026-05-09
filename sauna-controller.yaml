@@ -60,7 +60,7 @@ psram:
 
 # Logging
 logger:
-  level: INFO
+  level: WARN
 
 # Home Assistant API
 api:
@@ -340,7 +340,7 @@ sensor:
     accuracy_decimals: 1
     update_interval: 1s
     lambda: |-
-      std::string mode = id(control_temp_source).state.c_str();
+      std::string mode = id(control_temp_source).current_option().c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
 
       float top  = id(t_top).state;
@@ -741,7 +741,7 @@ sensor:
     accuracy_decimals: 0
     update_interval: 2s
     lambda: |-
-      std::string mode = id(control_temp_source).state.c_str();
+      std::string mode = id(control_temp_source).current_option().c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
 
       float top  = id(t_top).state;
@@ -775,7 +775,7 @@ text_sensor:
     entity_category: diagnostic
     update_interval: 5s
     lambda: |-
-      std::string mode = id(control_temp_source).state.c_str();
+      std::string mode = id(control_temp_source).current_option().c_str();
       if (mode.empty()) mode = "Average (Top+Head)";
       return mode;
 
@@ -1150,7 +1150,7 @@ climate:
 
     control_parameters:
       kp: 0.15
-      ki: 0.0005
+      ki: 0.001
       kd: 0
       min_integral: -0.15
       max_integral: 0.15
@@ -1644,7 +1644,7 @@ interval:
               thermal_tau = (-1.0 / id(th_c)) / 60.0;
             }
 
-            std::string control_src = id(control_temp_source).state.c_str();
+            std::string control_src = id(control_temp_source).current_option().c_str();
             if (control_src.empty()) control_src = "Average (Top+Head)";
 
             root["device_id"] = "${internalname}";

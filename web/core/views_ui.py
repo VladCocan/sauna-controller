@@ -1,3 +1,4 @@
+from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.shortcuts import render, get_object_or_404
@@ -121,7 +122,11 @@ def dashboard(request):
         latest[d.id] = t.payload if t else None
 
     # diagnostics are provided by the device via its status payload; frontend will fetch them
-    return render(request, "core/dashboard.html", {"devices": devices, "latest": latest})
+    return render(request, "core/dashboard.html", {
+        "devices": devices,
+        "latest": latest,
+        "build": django_settings.APP_BUILD,
+    })
 
 
 @login_required

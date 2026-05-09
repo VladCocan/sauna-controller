@@ -156,20 +156,16 @@ window.addEventListener("load", () => {
       })
       .catch(() => {});
 
-    navigator.serviceWorker.register("/sw.js?v=10", { scope: "/", updateViaCache: "none" })
+    navigator.serviceWorker.register("/sw.js?v={{ build }}", { scope: "/", updateViaCache: "none" })
       .then((reg) => {
-        console.log("Service Worker registered");
+        console.log("Service Worker registered, build={{ build }}");
 
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              newWorker.postMessage({ type: "SKIP_WAITING" });
-            }
-          });
-        });
+        // Trigger an update check on every page load so a newly deployed
+        // SW is discovered as quickly as possible.
+        reg.update().catch(() => {});
 
+        // When the new SW takes control (after skipWaiting + clients.claim),
+        // reload so the user immediately sees the updated frontend assets.
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           window.location.reload();
         });
