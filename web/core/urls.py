@@ -6,6 +6,7 @@ from .views_ui import (
     telemetry_series,
     pwa_service_worker,
     pwa_manifest,
+    device_sse,          # ← adaugă
 )
 
 urlpatterns = [
@@ -23,4 +24,7 @@ urlpatterns = [
     path("action/set_diagnostic", set_diagnostic, name="set_diagnostic"),
 
     path("api/telemetry_series", telemetry_series, name="telemetry_series"),
+    
+    path("sse/<str:device_id>/", device_sse, name="device_sse"),  # ← adaugă
+    
 ]

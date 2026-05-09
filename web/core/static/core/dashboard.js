@@ -800,16 +800,124 @@ async function refreshAll() {
   }
 }
 
-initDeviceSelection();
-refreshAll();
+let _es = null;
 
-let _pollInterval = setInterval(refreshAll, 3000);
-
-document.addEventListener("visibilitychange", function () {
-  if (document.hidden) {
-    clearInterval(_pollInterval);
-  } else {
-    refreshAll();
-    _pollInterval = setInterval(refreshAll, 3000);
+function connectSSE(deviceId) {
+  if (_es) {
+    _es.close();
+    _es = null;
   }
+  const es = new EventSource(`/sse/${encodeURIComponent(deviceId)}/`);
+es.onmessage = (e) => {
+  try {
+    const payload = JSON.parse(e.data);
+    const deviceId = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
+    if (!deviceId) return;
+    const s = payload.status || {};
+
+    // Online status — dacă primim SSE, device-ul e online
+    setOnlineBadge(deviceId, true);
+    setText("online-status-" + deviceId, t("online", "ONLINE"));
+    setText("last-ack-" + deviceId, payload.last_ack_id || "");
+    setText("lastseen-" + deviceId, new Date().toLocaleString());
+
+    const mode = getEffectiveMode(deviceId, s.mode);
+    const fanOn = getEffectiveControl(deviceId, "fan", s.fan_on);
+    const lightOn = getEffectiveControl(deviceId, "light", s.light_on);
+    const ampOn = getEffectiveControl(deviceId, "amp", s.amp_on);
+
+    deviceTruth[deviceId] = { mode, fan: fanOn, light: lightOn, amp: ampOn };
+
+    const saunaStatusEl = document.getElementById("sauna-status-" + deviceId);
+    if (saunaStatusEl) {
+      const isOn = mode === "HEAT" || !!fanOn || !!lightOn || !!ampOn;
+      saunaStatusEl.innerHTML = isOn
+        ? '<span class="badge text-bg-warning">' + t("saunaOn", "SAUNA ON") + "</span>"
+        : '<span class="badge text-bg-secondary">' + t("saunaOff", "SAUNA OFF") + "</span>";
+    }
+
+    const lightStatusEl = document.getElementById("light-status-" + deviceId);
+    if (lightStatusEl) {
+      lightStatusEl.innerHTML = lightOn
+        ? '<span class="badge text-bg-info"><i class="bi bi-lightbulb-fill"></i> ' + t("lightOnLabel", "Light on") + "</span>"
+        : '<span class="badge text-bg-secondary"><i class="bi bi-lightbulb"></i> ' + t("lightOffLabel", "Light off") + "</span>";
+    }
+
+    const fanStatusEl = document.getElementById("fan-status-" + deviceId);
+    if (fanStatusEl) {
+      fanStatusEl.innerHTML = fanOn
+        ? '<span class="badge text-bg-info"><i class="bi bi-fan-fill"></i> ' + t("fanOnLabel", "Fan on") + "</span>"
+        : '<span class="badge text-bg-secondary"><i class="bi bi-fan"></i> ' + t("fanOffLabel", "Fan off") + "</span>";
+    }
+
+    const ampStatusEl = document.getElementById("amp-status-" + deviceId);
+    if (ampStatusEl) {
+      ampStatusEl.innerHTML = ampOn
+        ? '<span class="badge text-bg-info"><i class="bi bi-speaker-fill"></i> ' + t("ampOnLabel", "Amplifier on") + "</span>"
+        : '<span class="badge text-bg-secondary"><i class="bi bi-speaker"></i> ' + t("ampOffLabel", "Amplifier off") + "</span>";
+    }
+
+    const modeEl = document.getElementById("mode-" + deviceId);
+    if (modeEl) {
+      const isHeaterOn = mode === "HEAT" || (s.heater_power_pct || 0) > 0;
+      modeEl.innerHTML = isHeaterOn
+        ? '<span class="badge text-bg-success">' + t("on", "ON") + "</span>"
+        : '<span class="badge text-bg-secondary">' + t("off", "OFF") + "</span>";
+    }
+
+    const effectiveSetpoint = getEffectiveSetpoint(deviceId, s.setpoint_c);
+    setText("sp-" + deviceId, formatTemperature(effectiveSetpoint));
+    setText("ttop-" + deviceId, formatTemperature(s.t_top_c));
+    setText("thead-" + deviceId, formatTemperature(s.t_head_c));
+    setText("tunder-" + deviceId, formatTemperature(s.t_under_c));
+    setText("outdoor-temp-" + deviceId, formatTemperature(s.t_outdoor_c));
+    setText("control-temp-value-" + deviceId, formatTemperature(s.t_control));
+    setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
+    setText("control-temp-valid-" + deviceId, s.control_temp_valid);
+    setText("control-strat-delta-" + deviceId, formatTemperature(s.strat_delta_c));
+    const etaToSetpointMin = firstAvailable(s, ["eta_auto_min", "eta_pred_min"]);
+    setText("eta-setpoint-" + deviceId, formatEtaMinutes(etaToSetpointMin));
+
+    setToggleUI(deviceId, "fan", fanOn);
+    setToggleUI(deviceId, "light", lightOn);
+    setToggleUI(deviceId, "amp", ampOn);
+
+    if (mode) setModeUI(deviceId, mode);
+
+    const setpointRange = document.getElementById("setpoint-range-" + deviceId);
+    const setpointValue = document.getElementById("setpoint-value-" + deviceId);
+    if (setpointRange && effectiveSetpoint !== undefined && effectiveSetpoint !== null) {
+      if (document.activeElement !== setpointRange) setpointRange.value = effectiveSetpoint;
+      if (setpointValue) setpointValue.textContent = effectiveSetpoint;
+    }
+
+    syncDiagnosticControls(deviceId, s);
+    renderDiagnostics(deviceId, s);
+
+    // Graficul și comenzile — poll lent, nu la fiecare eveniment SSE
+  } catch (_) {}
+};
+  es.onerror = () => {};
+  _es = es;
+  return es;
+}
+
+initDeviceSelection();
+
+const _initialDevice = getAllDeviceIds()[0];
+if (_initialDevice) {
+  const _selected = localStorage.getItem(STORAGE_KEY) || _initialDevice;
+  connectSSE(_selected);
+  refreshDevice(_selected); // primul load complet
+}
+
+document.addEventListener("deviceSelected", (e) => {
+  connectSSE(e.detail.deviceId);
+  refreshDevice(e.detail.deviceId);
 });
+
+// Poll lent doar pentru grafic și comenzi pending
+setInterval(() => {
+  const selected = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
+  if (selected && !document.hidden) refreshDevice(selected);
+}, 30000);

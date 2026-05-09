@@ -64,7 +64,8 @@ self.addEventListener("fetch", (event) => {
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/v1/") ||
-    url.pathname.startsWith("/action/")
+    url.pathname.startsWith("/action/") ||
+    url.pathname.startsWith("/sse/")
   ) {
     return; // do not call event.respondWith() — browser handles it directly
   }

@@ -1,6 +1,9 @@
+import json
+import queue
+import time
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from pathlib import Path
@@ -250,6 +253,35 @@ def set_diagnostic(request):
     )
     return JsonResponse({"ok": True})
 
+
+@login_required
+@require_GET
+def device_sse(request, device_id):
+    """Server-Sent Events stream — DB polling, works across processes."""
+    dev = get_device_for_user(device_id, request.user)
+
+    def event_stream():
+        last_ts = timezone.now()
+        yield "retry: 3000\n\n"
+        while True:
+            t = (
+                Telemetry.objects
+                .filter(device=dev, ts__gt=last_ts)
+                .order_by("ts")
+                .first()
+            )
+            if t:
+                last_ts = t.ts
+                yield f"data: {json.dumps(t.payload)}\n\n"
+            else:
+                yield ": keepalive\n\n"
+            time.sleep(1)
+
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 @require_GET
 def pwa_service_worker(request):
