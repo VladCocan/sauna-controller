@@ -65,7 +65,7 @@ class MqttBridgeTests(TestCase):
         MQTT_COMMAND_TOPIC_TEMPLATE="sauna/{device_id}/cmd",
         MQTT_COMMAND_QOS=1,
     )
-    @patch("core.mqtt_bridge.publish.single")
+    @patch("paho.mqtt.publish.single")
     def test_publish_command_sends_expected_topic_and_payload(self, mock_publish_single):
         cmd = Command.objects.create(
             device=self.device,
@@ -87,7 +87,13 @@ class UserUiTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="bob", password="pass12345")
         self.other = get_user_model().objects.create_user(username="mallory", password="pass12345")
+        self.staff_user = get_user_model().objects.create_user(
+            username="adminbob",
+            password="pass12345",
+            is_staff=True,
+        )
         self.device = Device.objects.create(owner=self.user, device_id="dev-1")
+        self.device.shared_users.add(self.staff_user)
         Device.objects.create(owner=self.other, device_id="dev-2")
 
     def test_device_status_requires_login(self):
@@ -107,8 +113,43 @@ class UserUiTests(TestCase):
         response = self.client.get(reverse("device_status"), {"device_id": "dev-2"})
         self.assertEqual(response.status_code, 404)
 
-    def test_set_diagnostic_number_creates_command(self):
+    def test_non_staff_dashboard_hides_admin_and_diagnostic_ui(self):
         self.client.login(username="bob", password="pass12345")
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/dashboard_user.html")
+        self.assertContains(response, "Control")
+        self.assertNotContains(response, "href=\"/admin/\"", html=False)
+        self.assertNotContains(response, "Diagnostic")
+        self.assertNotContains(response, "Temperature Chart")
+        self.assertNotContains(response, "Pending Commands")
+
+    def test_staff_dashboard_keeps_admin_and_diagnostic_ui(self):
+        self.client.login(username="adminbob", password="pass12345")
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "core/dashboard.html")
+        self.assertContains(response, "href=\"/admin/\"", html=False)
+        self.assertContains(response, "Diagnostic")
+        self.assertContains(response, "Control")
+
+    def test_non_staff_set_diagnostic_is_forbidden(self):
+        self.client.login(username="bob", password="pass12345")
+        response = self.client.post(
+            reverse("set_diagnostic"),
+            data={
+                "device_id": self.device.device_id,
+                "kind": "number",
+                "key": "boost_window",
+                "value": "18",
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertJSONEqual(response.content, {"error": "Forbidden"})
+        self.assertFalse(Command.objects.filter(device=self.device).exists())
+
+    def test_staff_set_diagnostic_number_creates_command(self):
+        self.client.login(username="adminbob", password="pass12345")
         response = self.client.post(
             reverse("set_diagnostic"),
             data={
@@ -126,8 +167,14 @@ class UserUiTests(TestCase):
         self.assertEqual(cmd.payload["name"], "boost_window")
         self.assertEqual(cmd.payload["value"], 18.0)
 
-    def test_set_diagnostic_rejects_invalid_select_option(self):
+    def test_non_staff_device_commands_is_forbidden(self):
         self.client.login(username="bob", password="pass12345")
+        response = self.client.get(reverse("device_commands"), {"device_id": self.device.device_id})
+        self.assertEqual(response.status_code, 403)
+        self.assertJSONEqual(response.content, {"error": "Forbidden"})
+
+    def test_set_diagnostic_rejects_invalid_select_option(self):
+        self.client.login(username="adminbob", password="pass12345")
         response = self.client.post(
             reverse("set_diagnostic"),
             data={
