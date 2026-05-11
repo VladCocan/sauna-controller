@@ -115,6 +115,113 @@ function formatEtaMinutes(value) {
   return String(hours).padStart(2, "0") + ":" + String(mins).padStart(2, "0");
 }
 
+function parseIsoDurationMinutes(value) {
+  const match = /^P(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)$/i.exec(value);
+  if (!match) return null;
+
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  const seconds = Number(match[3] || 0);
+  const totalMinutes = (hours * 3600 + minutes * 60 + seconds) / 60;
+  return Number.isFinite(totalMinutes) ? Math.max(0, totalMinutes) : null;
+}
+
+function parseClockDurationMinutes(value) {
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+  if (!match) return null;
+
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  const third = match[3] !== undefined ? Number(match[3]) : null;
+  if (!Number.isFinite(first) || !Number.isFinite(second) || (third !== null && !Number.isFinite(third))) return null;
+
+  const totalSeconds = third === null ? (first * 60 + second) : (first * 3600 + second * 60 + third);
+  return Math.max(0, totalSeconds / 60);
+}
+
+function parseTelemetryEta(rawValue) {
+  if (rawValue === null || rawValue === undefined || rawValue === "") return null;
+
+  if (typeof rawValue === "number") {
+    return Number.isFinite(rawValue) && rawValue >= 0 ? { minutes: rawValue, raw: rawValue, source: "minutes" } : null;
+  }
+
+  const trimmed = String(rawValue).trim();
+  if (!trimmed) return null;
+
+  const numericMinutes = Number(trimmed);
+  if (Number.isFinite(numericMinutes) && numericMinutes >= 0) {
+    return { minutes: numericMinutes, raw: rawValue, source: "minutes" };
+  }
+
+  const isoDurationMinutes = parseIsoDurationMinutes(trimmed);
+  if (isoDurationMinutes !== null) {
+    return { minutes: isoDurationMinutes, raw: rawValue, source: "duration" };
+  }
+
+  const clockMinutes = parseClockDurationMinutes(trimmed);
+  if (clockMinutes !== null) {
+    return { minutes: clockMinutes, raw: rawValue, source: "clock" };
+  }
+
+  const parsedTimestamp = Date.parse(trimmed);
+  if (Number.isFinite(parsedTimestamp)) {
+    return {
+      minutes: Math.max(0, (parsedTimestamp - Date.now()) / 60000),
+      raw: rawValue,
+      source: "timestamp",
+      timestampMs: parsedTimestamp,
+    };
+  }
+
+  return null;
+}
+
+function formatReadyEta(parsedEta, isReady, isHeating) {
+  if (isReady) return t("readyNow", "Ready now");
+  if (!isHeating) return t("etaUnavailable", "ETA unavailable");
+  if (!parsedEta || !Number.isFinite(parsedEta.minutes)) return t("etaUnavailable", "ETA unavailable");
+
+  const minutes = Math.max(0, parsedEta.minutes);
+  if (minutes < 1) {
+    const seconds = Math.max(15, Math.round(minutes * 60 / 5) * 5 || 0);
+    return tFormat("readyInSeconds", "Ready in ~__SECONDS__ sec", { seconds: seconds });
+  }
+  if (minutes < 60) {
+    return tFormat("readyInMinutes", "Ready in ~__MIN__ min", { min: Math.round(minutes) });
+  }
+
+  const roundedMinutes = Math.round(minutes);
+  const hours = Math.floor(roundedMinutes / 60);
+  const mins = roundedMinutes % 60;
+  return tFormat("readyInHoursMinutes", "Ready in ~__HOURS__h __MIN__m", { hours: hours, min: mins });
+}
+
+function formatCompactEta(parsedEta, isReady, isHeating) {
+  if (isReady) return t("readyNowShort", "Now");
+  if (!isHeating) return "-";
+  if (!parsedEta || !Number.isFinite(parsedEta.minutes)) return t("etaUnavailableShort", "N/A");
+
+  const minutes = Math.max(0, parsedEta.minutes);
+  if (minutes < 1) return tFormat("etaSecondsShort", "~__SECONDS__s", { seconds: Math.max(15, Math.round(minutes * 60 / 5) * 5 || 0) });
+  if (minutes < 60) return tFormat("etaMinutesShort", "~__MIN__ min", { min: Math.round(minutes) });
+
+  const roundedMinutes = Math.round(minutes);
+  const hours = Math.floor(roundedMinutes / 60);
+  const mins = roundedMinutes % 60;
+  return mins === 0 ? tFormat("etaHoursShort", "~__HOURS__h", { hours: hours }) : hours + "h " + mins + "m";
+}
+
+function parseReadyFlag(rawValue) {
+  if (rawValue === true || rawValue === false) return rawValue;
+  if (rawValue === null || rawValue === undefined || rawValue === "") return null;
+
+  const normalized = String(rawValue).trim().toLowerCase();
+  if (["true", "1", "yes", "ready", "on"].indexOf(normalized) >= 0) return true;
+  if (["false", "0", "no", "not_ready", "off"].indexOf(normalized) >= 0) return false;
+  return null;
+}
+
 function firstAvailable(source, keys) {
   for (let i = 0; i < keys.length; i += 1) {
     const key = keys[i];
@@ -172,6 +279,7 @@ const diagnosticSchema = [
       [t("etaB", "ETA B"), ["eta_model_b"]],
       [t("etaAutoMin", "ETA Auto (min)"), ["eta_auto_min"]],
       [t("etaPredMin", "ETA Pred (min)"), ["eta_pred_min"]],
+      [t("readyFlag", "Ready Flag"), ["ready", "is_ready", "sauna_ready", "target_reached"]],
       [t("etaRmse", "ETA RMSE"), ["eta_rmse"]],
       [t("etaConfidence", "ETA Confidence"), ["eta_confidence"]],
       [t("etaPredRate", "ETA Pred Rate"), ["eta_pred_rate"]],
@@ -294,8 +402,192 @@ const setpointOptimistic = {};
 const modeOptimistic = {};
 const controlOptimistic = {};
 const deviceTruth = {};
+const latestStatusByDevice = {};
+const latestModeByDevice = {};
+const latestSetpointByDevice = {};
 const pendingCommands = {};
 const COMMAND_DEBOUNCE_MS = 600;
+const READY_SESSION_STORAGE_PREFIX = "sauna_ready_session_";
+
+function supportsReadyNotifications() {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+function getNotificationPermissionSafe() {
+  if (!supportsReadyNotifications()) return "unsupported";
+  return Notification.permission || "default";
+}
+
+function getReadySession(deviceId) {
+  try {
+    const raw = window.localStorage.getItem(READY_SESSION_STORAGE_PREFIX + deviceId);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function setReadySession(deviceId, data) {
+  try {
+    if (!data) {
+      window.localStorage.removeItem(READY_SESSION_STORAGE_PREFIX + deviceId);
+      return;
+    }
+    window.localStorage.setItem(READY_SESSION_STORAGE_PREFIX + deviceId, JSON.stringify(data));
+  } catch (_) {}
+}
+
+function buildReadySessionKey(deviceId, mode, setpointC) {
+  const normalizedMode = String(mode || "").toUpperCase();
+  const setpoint = Number(setpointC);
+  if (normalizedMode !== "HEAT" || !Number.isFinite(setpoint)) return null;
+  return [deviceId, normalizedMode, Math.round(setpoint)].join("|");
+}
+
+function showBrowserReadyNotification(deviceId) {
+  if (getNotificationPermissionSafe() !== "granted") return;
+
+  const title = t("saunaReadyTitle", "Sauna is ready");
+  const body = t("saunaReadyBody", "Target temperature reached.");
+  const options = {
+    body: body,
+    tag: "sauna-ready-" + deviceId,
+    renotify: false,
+    badge: "/static/pwa/favicon-32x32.png",
+    icon: "/static/pwa/apple-touch-icon.png",
+  };
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.ready
+      .then(function (reg) {
+        if (reg && typeof reg.showNotification === "function") {
+          return reg.showNotification(title, options);
+        }
+        throw new Error("showNotification unavailable");
+      })
+      .catch(function () {
+        try {
+          new Notification(title, options);
+        } catch (_) {}
+      });
+    return;
+  }
+
+  try {
+    new Notification(title, options);
+  } catch (_) {}
+}
+
+async function requestReadyNotificationPermission(deviceId) {
+  if (!supportsReadyNotifications()) {
+    toast(t("notificationsUnsupported", "Notifications are not supported on this browser."), "secondary");
+    updateNotificationPrompt(deviceId);
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      toast(t("notificationsEnabled", "Ready notifications enabled"), "success");
+    } else if (permission === "denied") {
+      toast(t("notificationsDenied", "Notifications were denied"), "secondary");
+    }
+  } catch (_) {
+    toast(t("notificationsUnavailable", "Notifications are unavailable on this device"), "secondary");
+  }
+
+  updateNotificationPrompt(deviceId);
+}
+
+function updateNotificationPrompt(deviceId) {
+  const btn = document.getElementById("notify-enable-" + deviceId);
+  if (!btn) return;
+
+  const permission = getNotificationPermissionSafe();
+  const show = permission === "default";
+  btn.classList.toggle("d-none", !show);
+  btn.disabled = ConnectionState.getState(deviceId) !== ConnectionState.STATE.ONLINE;
+}
+
+function evaluateReadyState(deviceId, status, mode, effectiveSetpoint) {
+  const s = status || {};
+  const fresh = ConnectionState.getState(deviceId) === ConnectionState.STATE.ONLINE;
+  const normalizedMode = String(mode || s.mode || "OFF").toUpperCase() === "HEAT" ? "HEAT" : "OFF";
+  const isHeating = normalizedMode === "HEAT";
+  const currentTemp = Number(firstAvailable(s, ["t_control", "t_head_c"]));
+  const targetTemp = Number(effectiveSetpoint);
+  const explicitReady = parseReadyFlag(firstAvailable(s, ["ready", "is_ready", "sauna_ready", "target_reached"]));
+  const reachedTarget = Number.isFinite(currentTemp) && Number.isFinite(targetTemp) && currentTemp >= targetTemp;
+  const ready = fresh && isHeating && (explicitReady === true || reachedTarget);
+  const etaRaw = firstAvailable(s, ["eta_auto_min", "eta_pred_min", "eta", "eta_ready_at", "ready_at"]);
+  const eta = parseTelemetryEta(etaRaw);
+
+  return {
+    fresh: fresh,
+    isHeating: isHeating,
+    isReady: ready,
+    currentTemp: currentTemp,
+    targetTemp: targetTemp,
+    readyFlag: explicitReady,
+    eta: eta,
+    etaRaw: etaRaw,
+  };
+}
+
+function maybeNotifySaunaReady(deviceId, readyState) {
+  const sessionKey = buildReadySessionKey(deviceId, latestModeByDevice[deviceId], latestSetpointByDevice[deviceId]);
+  if (!sessionKey) {
+    setReadySession(deviceId, null);
+    return;
+  }
+
+  let session = getReadySession(deviceId);
+  if (!session || session.sessionKey !== sessionKey) {
+    session = { sessionKey: sessionKey, notified: false };
+    setReadySession(deviceId, session);
+  }
+
+  if (!readyState.isReady || session.notified) return;
+
+  toast(t("saunaReadyToast", "Sauna ready. Target temperature reached."), "success");
+  showBrowserReadyNotification(deviceId);
+  session.notified = true;
+  setReadySession(deviceId, session);
+}
+
+function updateReadyUi(deviceId) {
+  const status = latestStatusByDevice[deviceId] || {};
+  const mode = latestModeByDevice[deviceId] || "OFF";
+  const effectiveSetpoint = latestSetpointByDevice[deviceId];
+  const readyState = evaluateReadyState(deviceId, status, mode, effectiveSetpoint);
+
+  const etaCompactEl = document.getElementById("eta-setpoint-" + deviceId);
+  const etaDisplayEl = document.getElementById("eta-display-" + deviceId);
+  const readyBadgeEl = document.getElementById("ready-state-" + deviceId);
+
+  if (etaCompactEl) etaCompactEl.textContent = formatCompactEta(readyState.eta, readyState.isReady, readyState.isHeating);
+  if (etaDisplayEl) etaDisplayEl.textContent = formatReadyEta(readyState.eta, readyState.isReady, readyState.isHeating);
+
+  if (readyBadgeEl) {
+    readyBadgeEl.className = "sauna-ready-badge";
+    if (!readyState.fresh) {
+      readyBadgeEl.textContent = t("statusWaiting", "Waiting for updates");
+      readyBadgeEl.classList.add("is-muted");
+    } else if (readyState.isReady) {
+      readyBadgeEl.textContent = t("saunaReady", "Sauna Ready");
+      readyBadgeEl.classList.add("is-ready");
+    } else if (readyState.isHeating) {
+      readyBadgeEl.textContent = t("heating", "Heating");
+      readyBadgeEl.classList.add("is-heating");
+    } else {
+      readyBadgeEl.textContent = t("saunaOff", "Sauna Off");
+      readyBadgeEl.classList.add("is-off");
+    }
+  }
+
+  updateNotificationPrompt(deviceId);
+  maybeNotifySaunaReady(deviceId, readyState);
+}
 
 function rememberPendingCommand(deviceId, commandId, label) {
   const id = Number(commandId);
@@ -602,6 +894,7 @@ async function refreshDevice(deviceId) {
     const fanOn = getEffectiveControl(deviceId, "fan", s.fan_on);
     const lightOn = getEffectiveControl(deviceId, "light", s.light_on);
     const ampOn = getEffectiveControl(deviceId, "amp", s.amp_on);
+    latestStatusByDevice[deviceId] = s;
 
     deviceTruth[deviceId] = {
       mode: mode,
@@ -609,6 +902,7 @@ async function refreshDevice(deviceId) {
       light: lightOn,
       amp: ampOn,
     };
+    latestModeByDevice[deviceId] = mode;
 
     const saunaStatusEl = document.getElementById("sauna-status-" + deviceId);
     if (saunaStatusEl) {
@@ -652,8 +946,8 @@ async function refreshDevice(deviceId) {
     setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
     setText("control-temp-valid-" + deviceId, s.control_temp_valid);
     setText("control-strat-delta-" + deviceId, formatTemperature(s.strat_delta_c));
-    const etaToSetpointMin = firstAvailable(s, ["eta_auto_min", "eta_pred_min"]);
-    setText("eta-setpoint-" + deviceId, formatEtaMinutes(etaToSetpointMin));
+    latestSetpointByDevice[deviceId] = effectiveSetpoint;
+    updateReadyUi(deviceId);
 
     setToggleUI(deviceId, "fan", fanOn);
     setToggleUI(deviceId, "light", lightOn);
@@ -969,8 +1263,10 @@ function connectSSE(deviceId) {
     const fanOn = getEffectiveControl(deviceId, "fan", s.fan_on);
     const lightOn = getEffectiveControl(deviceId, "light", s.light_on);
     const ampOn = getEffectiveControl(deviceId, "amp", s.amp_on);
+    latestStatusByDevice[deviceId] = s;
 
     deviceTruth[deviceId] = { mode: mode, fan: fanOn, light: lightOn, amp: ampOn };
+    latestModeByDevice[deviceId] = mode;
 
     const saunaStatusEl = document.getElementById("sauna-status-" + deviceId);
     if (saunaStatusEl) {
@@ -1013,8 +1309,8 @@ function connectSSE(deviceId) {
     setText("control-temp-source-" + deviceId, firstAvailable(s, ["control_temp_source_active", "control_temp_source"]));
     setText("control-temp-valid-" + deviceId, s.control_temp_valid);
     setText("control-strat-delta-" + deviceId, formatTemperature(s.strat_delta_c));
-    const etaToSetpointMin = firstAvailable(s, ["eta_auto_min", "eta_pred_min"]);
-    setText("eta-setpoint-" + deviceId, formatEtaMinutes(etaToSetpointMin));
+    latestSetpointByDevice[deviceId] = effectiveSetpoint;
+    updateReadyUi(deviceId);
 
     setToggleUI(deviceId, "fan", fanOn);
     setToggleUI(deviceId, "light", lightOn);
@@ -1099,6 +1395,13 @@ document.addEventListener("visibilitychange", function () {
   refreshDevice(selected);
 });
 
+document.addEventListener("click", function (ev) {
+  const btn = ev.target.closest('[id^="notify-enable-"]');
+  if (!btn) return;
+  const deviceId = btn.id.replace("notify-enable-", "");
+  requestReadyNotificationPermission(deviceId);
+});
+
 // Initialize connection state UI for all devices
 getAllDeviceIds().forEach(function (deviceId) {
   ConnectionState.initDevice(deviceId);
@@ -1148,6 +1451,8 @@ function updateConnectionStatusUI(deviceId, state) {
       card.classList.remove("sauna-offline");
     }
   }
+
+  updateReadyUi(deviceId);
 }
 
 /**

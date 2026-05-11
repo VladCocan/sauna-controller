@@ -79,6 +79,11 @@
                           <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
                         {% endif %}
                       </div>
+                      <div class="sauna-ready-summary mb-3">
+                        <span class="sauna-ready-badge is-muted" id="ready-state-{{ d.device_id }}">{% trans "Waiting for updates" %}</span>
+                        <div class="sauna-eta-display" id="eta-display-{{ d.device_id }}">{% trans "ETA unavailable" %}</div>
+                        <button class="btn btn-sm btn-outline-light sauna-notify-btn d-none" type="button" id="notify-enable-{{ d.device_id }}">{% trans "Enable notifications" %}</button>
+                      </div>
                       <div class="sauna-inline-stats">
                         <div class="sauna-inline-stat">
                           <small>{% trans "Setpoint" %}</small>
@@ -188,6 +193,11 @@
                     {% else %}
                       <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
                     {% endif %}
+                  </div>
+                  <div class="sauna-ready-summary mb-3">
+                    <span class="sauna-ready-badge is-muted" id="ready-state-{{ d.device_id }}">{% trans "Waiting for updates" %}</span>
+                    <div class="sauna-eta-display" id="eta-display-{{ d.device_id }}">{% trans "ETA unavailable" %}</div>
+                    <button class="btn btn-sm btn-outline-light sauna-notify-btn d-none" type="button" id="notify-enable-{{ d.device_id }}">{% trans "Enable notifications" %}</button>
                   </div>
 
                   <div class="row g-2 mb-3">
