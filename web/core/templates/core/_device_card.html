@@ -1,9 +1,9 @@
 {% load dict_extras i18n %}
-<div class="card">
+<div class="card sauna-card {% if staff_view %}sauna-card-staff{% else %}sauna-card-user{% endif %}">
   <div class="card-body p-0">
     
     <!-- Device Header -->
-    <div class="device-header p-3 p-md-4 border-bottom">
+    <div class="device-header sauna-hero p-3 p-md-4 border-bottom">
       <div>
         <h5 class="device-title m-0">{{ d.device_id }}</h5>
         {% if staff_view %}
@@ -13,7 +13,7 @@
         {% endif %}
       </div>
       
-      <div class="device-badges">
+      <div class="device-badges sauna-status">
         <span class="badge" id="online-{{ d.device_id }}" style="background-color: #6c757d;">—</span>
         <span class="badge" id="sauna-status-{{ d.device_id }}" style="background-color: #6c757d;">—</span>
         {% if staff_view %}
@@ -26,20 +26,20 @@
     </div>
 
     <!-- Tabs Navigation -->
-    <ul class="nav nav-tabs" role="tablist" style="border-left: 0; border-right: 0; border-top: 0; margin: 0; padding: 0 1rem;">
+    <ul class="nav nav-tabs sauna-tabs" role="tablist" style="border-left: 0; border-right: 0; border-top: 0; margin: 0; padding: 0 1rem;">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="status-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#status-{{ d.device_id }}" type="button" role="tab" aria-controls="status-{{ d.device_id }}" aria-selected="true">
+        <button class="nav-link active sauna-tab-link" id="status-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#status-{{ d.device_id }}" type="button" role="tab" aria-controls="status-{{ d.device_id }}" aria-selected="true">
           <i class="bi bi-speedometer2"></i> {% trans "Status" %}
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="settings-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#settings-{{ d.device_id }}" type="button" role="tab" aria-controls="settings-{{ d.device_id }}" aria-selected="false">
+        <button class="nav-link sauna-tab-link" id="settings-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#settings-{{ d.device_id }}" type="button" role="tab" aria-controls="settings-{{ d.device_id }}" aria-selected="false">
           <i class="bi bi-sliders"></i> {% trans "Control" %}
         </button>
       </li>
       {% if staff_view %}
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="diagnostic-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#diagnostic-{{ d.device_id }}" type="button" role="tab" aria-controls="diagnostic-{{ d.device_id }}" aria-selected="false">
+          <button class="nav-link sauna-tab-link" id="diagnostic-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#diagnostic-{{ d.device_id }}" type="button" role="tab" aria-controls="diagnostic-{{ d.device_id }}" aria-selected="false">
             <i class="bi bi-tools"></i> {% trans "Diagnostic" %}
           </button>
         </li>
@@ -47,7 +47,7 @@
     </ul>
 
     <!-- Tab Content -->
-    <div class="tab-content">
+    <div class="tab-content sauna-tab-content">
 
       <!-- STATUS TAB -->
       <div class="tab-pane fade show active" id="status-{{ d.device_id }}" role="tabpanel">
@@ -55,80 +55,72 @@
           {% with s=payload.status %}
             {% if staff_view %}
               <!-- Staff Dashboard - Full Status View -->
-              <div class="p-3 p-md-4">
-                <!-- Top Section: Temperature & Status -->
-                <div class="status-grid mb-4">
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Heater Status" %}</div>
-                    <div id="mode-{{ d.device_id }}" class="mt-3">
-                      {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
-                        <span class="badge text-bg-success" style="padding: 0.75rem 1rem; font-size: 1rem;">ON</span>
-                      {% else %}
-                        <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
-                      {% endif %}
+              <div class="p-3 p-md-4 sauna-staff-grid">
+                <div class="row g-3 align-items-stretch mb-3">
+                  <div class="col-12 col-lg-7">
+                    <div class="sauna-card-inner sauna-hero h-100">
+                      <div class="sauna-card-label">{% trans "Current Temp" %}</div>
+                      <div class="sauna-temp mt-2 mb-3"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|floatformat:1|default:"—" }}</span><span class="temperature-unit">°C</span></div>
+                      <div id="mode-{{ d.device_id }}" class="mb-3">
+                        {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
+                          <span class="badge text-bg-success" style="padding: 0.75rem 1rem; font-size: 1rem;">ON</span>
+                        {% else %}
+                          <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
+                        {% endif %}
+                      </div>
+                      <div class="sauna-inline-stats">
+                        <div class="sauna-inline-stat">
+                          <small>{% trans "Setpoint" %}</small>
+                          <strong><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</strong>
+                        </div>
+                        <div class="sauna-inline-stat">
+                          <small>{% trans "ETA" %}</small>
+                          <strong><span id="eta-setpoint-{{ d.device_id }}">—</span></strong>
+                        </div>
+                        <div class="sauna-inline-stat">
+                          <small>{% trans "Strat Δ" %}</small>
+                          <strong><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|floatformat:1|default:"—" }}</span>°C</strong>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Setpoint" %}</div>
-                    <div class="mt-3">
-                      <span class="temperature-display"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span><span class="temperature-unit">°C</span></span>
-                    </div>
-                  </div>
-
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Current Temp" %}</div>
-                    <div class="mt-3">
-                      <span class="temperature-display"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|floatformat:1|default:"—" }}</span><span class="temperature-unit">°C</span></span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Temperature Sensors Grid -->
-                <div class="row g-2 mb-4">
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "Top" %}</small>
-                      <div class="h6 mb-0"><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|floatformat:1|default:"—" }}</span>°C</div>
-                    </div>
-                  </div>
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "Head" %}</small>
-                      <div class="h6 mb-0"><span id="thead-{{ d.device_id }}">{{ s.t_head_c|floatformat:1|default:"—" }}</span>°C</div>
-                    </div>
-                  </div>
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "Under" %}</small>
-                      <div class="h6 mb-0"><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|floatformat:1|default:"—" }}</span>°C</div>
-                    </div>
-                  </div>
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "Outdoor" %}</small>
-                      <div class="h6 mb-0"><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|floatformat:1|default:"—" }}</span>°C</div>
-                    </div>
-                  </div>
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "ETA" %}</small>
-                      <div class="h6 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
-                    </div>
-                  </div>
-                  <div class="col-6 col-md-4">
-                    <div class="p-3 bg-light border rounded text-center">
-                      <small class="text-muted d-block mb-2">{% trans "Strat Δ" %}</small>
-                      <div class="h6 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|floatformat:1|default:"—" }}</span>°C</div>
+                  <div class="col-12 col-lg-5">
+                    <div class="sauna-card-inner h-100">
+                      <div class="sauna-card-label mb-2">{% trans "Control Signals" %}</div>
+                      <div class="row g-2">
+                        <div class="col-6">
+                          <div class="sauna-metric-tile text-center">
+                            <small>{% trans "Top" %}</small>
+                            <div><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|floatformat:1|default:"—" }}</span>°C</div>
+                          </div>
+                        </div>
+                        <div class="col-6">
+                          <div class="sauna-metric-tile text-center">
+                            <small>{% trans "Head" %}</small>
+                            <div><span id="thead-{{ d.device_id }}">{{ s.t_head_c|floatformat:1|default:"—" }}</span>°C</div>
+                          </div>
+                        </div>
+                        <div class="col-6">
+                          <div class="sauna-metric-tile text-center">
+                            <small>{% trans "Under" %}</small>
+                            <div><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|floatformat:1|default:"—" }}</span>°C</div>
+                          </div>
+                        </div>
+                        <div class="col-6">
+                          <div class="sauna-metric-tile text-center">
+                            <small>{% trans "Outdoor" %}</small>
+                            <div><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|floatformat:1|default:"—" }}</span>°C</div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Control Temp Info -->
-                <div class="row g-2 mb-4">
+                <div class="row g-3 mb-3">
                   <div class="col-md-6">
-                    <div class="p-3 bg-light border rounded">
-                      <small class="text-muted d-block mb-2">{% trans "Control Temp Source" %}</small>
+                    <div class="sauna-card-inner h-100">
+                      <small class="sauna-card-label d-block mb-1">{% trans "Control Temp Source" %}</small>
                       <div class="h6 mb-0" id="control-temp-source-{{ d.device_id }}">
                         {% if s.control_temp_source_active %}
                           {{ s.control_temp_source_active }}
@@ -141,15 +133,14 @@
                     </div>
                   </div>
                   <div class="col-md-6">
-                    <div class="p-3 bg-light border rounded">
-                      <small class="text-muted d-block mb-2">{% trans "Control Temp Valid" %}</small>
+                    <div class="sauna-card-inner h-100">
+                      <small class="sauna-card-label d-block mb-1">{% trans "Control Temp Valid" %}</small>
                       <div class="h6 mb-0" id="control-temp-valid-{{ d.device_id }}">{{ s.control_temp_valid|default:"—" }}</div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Chart -->
-                <div class="chart-container">
+                <div class="sauna-card-inner sauna-chart-panel">
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0">{% trans "Temperature Chart" %}</h6>
                     <div class="chart-controls">
@@ -165,50 +156,61 @@
               </div>
             {% else %}
               <!-- Non-Staff Dashboard - Simplified View -->
-              <div class="p-3 p-md-4">
-                <!-- Large Temperature Display -->
-                <div class="text-center mb-4">
-                  <div class="status-card mx-auto" style="max-width: 100%; min-height: auto;">
-                    <div class="status-card-label">{% trans "Current Temperature" %}</div>
-                    <div class="temperature-display mt-3">
-                      <span id="control-temp-value-{{ d.device_id }}">
-                        {% if s.t_control is not None %}
-                          {{ s.t_control|floatformat:1 }}
-                        {% elif s.t_head_c is not None %}
-                          {{ s.t_head_c|floatformat:1 }}
-                        {% else %}
-                          —
-                        {% endif %}
-                      </span><span class="temperature-unit">°C</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Quick Status Cards -->
-                <div class="status-grid mb-4">
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Sauna Status" %}</div>
-                    <div id="mode-{{ d.device_id }}" class="mt-3">
-                      {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
-                        <span class="badge text-bg-success" style="padding: 0.75rem 1rem; font-size: 1rem;">ON</span>
+              <div class="p-3 p-md-4 sauna-control-panel">
+                <div class="sauna-card-inner sauna-hero sauna-remote-hero mb-3">
+                  <div class="sauna-card-label">{% trans "Current Temperature" %}</div>
+                  <div class="sauna-temp mt-2 mb-3">
+                    <span id="control-temp-value-{{ d.device_id }}">
+                      {% if s.t_control is not None %}
+                        {{ s.t_control|floatformat:1 }}
+                      {% elif s.t_head_c is not None %}
+                        {{ s.t_head_c|floatformat:1 }}
                       {% else %}
-                        <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
+                        —
                       {% endif %}
+                    </span><span class="temperature-unit">°C</span>
+                  </div>
+
+                  <div id="mode-{{ d.device_id }}" class="sauna-status mb-3">
+                    {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
+                      <span class="badge text-bg-success" style="padding: 0.75rem 1rem; font-size: 1rem;">ON</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary" style="padding: 0.75rem 1rem; font-size: 1rem;">OFF</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="row g-2 mb-3">
+                    <div class="col-6">
+                      <div class="sauna-metric-tile">
+                        <small>{% trans "Target" %}</small>
+                        <div class="h5 mb-0"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="sauna-metric-tile">
+                        <small>{% trans "Timer" %}</small>
+                        <div class="h5 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Setpoint" %}</div>
-                    <div class="mt-3">
-                      <span class="h4"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</span>
-                    </div>
-                  </div>
-
-                  <div class="status-card">
-                    <div class="status-card-label">{% trans "Timer" %}</div>
-                    <div class="mt-3">
-                      <span class="h5"><span id="eta-setpoint-{{ d.device_id }}">—</span></span>
-                    </div>
+                  <div class="sauna-action-bar">
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_climate' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="mode" value="HEAT" />
+                      <button class="btn btn-lg btn-warning w-100 mb-2" type="submit">
+                        <i class="bi bi-fire me-2"></i>{% trans "Start Sauna" %}
+                      </button>
+                    </form>
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_climate' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="mode" value="OFF" />
+                      <button class="btn btn-lg btn-outline-light w-100" type="submit">
+                        <i class="bi bi-power me-2"></i>{% trans "Stop Sauna" %}
+                      </button>
+                    </form>
                   </div>
                 </div>
               </div>
@@ -219,12 +221,12 @@
 
       <!-- CONTROL TAB -->
       <div class="tab-pane fade" id="settings-{{ d.device_id }}" role="tabpanel">
-        <div class="p-3 p-md-4">
-          <div class="row g-3">
+        <div class="p-3 p-md-4 sauna-control-panel">
+          <div class="row g-3 sauna-controls-grid">
             
             <!-- Climate Control -->
             <div class="col-lg-6">
-              <div class="card border-0 shadow-sm h-100">
+              <div class="card border-0 shadow-sm h-100 sauna-card-inner">
                 <div class="card-header">
                   <h6 class="mb-0 d-flex align-items-center gap-2">
                     <i class="bi bi-thermometer-half text-primary"></i>
@@ -278,7 +280,7 @@
 
             <!-- Switches & Emergency -->
             <div class="col-lg-6">
-              <div class="card border-0 shadow-sm h-100">
+              <div class="card border-0 shadow-sm h-100 sauna-card-inner">
                 <div class="card-header">
                   <h6 class="mb-0 d-flex align-items-center gap-2">
                     <i class="bi bi-toggles text-success"></i>
@@ -357,10 +359,10 @@
       {% if staff_view %}
         <!-- DIAGNOSTIC TAB -->
         <div class="tab-pane fade" id="diagnostic-{{ d.device_id }}" role="tabpanel">
-          <div class="p-3 p-md-4">
+          <div class="p-3 p-md-4 sauna-staff-grid">
             <div class="row g-3">
               <div class="col-lg-6">
-                <div class="card border-0 shadow-sm h-100">
+                <div class="card border-0 shadow-sm h-100 sauna-card-inner">
                   <div class="card-header">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                       <i class="bi bi-sliders text-primary"></i>
@@ -438,7 +440,7 @@
               </div>
 
               <div class="col-lg-6">
-                <div class="card border-0 shadow-sm h-100">
+                <div class="card border-0 shadow-sm h-100 sauna-card-inner">
                   <div class="card-header">
                     <h6 class="mb-0 d-flex align-items-center gap-2">
                       <i class="bi bi-tools text-danger"></i>
@@ -492,7 +494,7 @@
               </div>
 
               <div class="col-12">
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow-sm sauna-card-inner">
                   <div class="card-header">
                     <h6 class="mb-0">{% trans "Live Diagnostics" %}</h6>
                   </div>
@@ -503,7 +505,7 @@
               </div>
 
               <div class="col-12">
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow-sm sauna-card-inner">
                   <div class="card-header">
                     <h6 class="mb-0">{% trans "Pending Commands" %}</h6>
                   </div>
@@ -514,7 +516,7 @@
               </div>
 
               <div class="col-12">
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow-sm sauna-card-inner">
                   <div class="card-header">
                     <h6 class="mb-0">{% trans "Device Information" %}</h6>
                   </div>

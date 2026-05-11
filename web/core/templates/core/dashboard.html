@@ -6,12 +6,12 @@
     {% include 'core/_head.html' %}
   </head>
 
-  <body class="bg-light">
+  <body class="bg-light sauna-app sauna-app-staff">
     {% include 'core/_pwa_script.html' %}
     {% include 'core/_navbar.html' %}
 
-    <main class="py-3">
-      <div class="container-fluid">
+    <main class="py-3 sauna-main">
+      <div class="container-fluid sauna-shell">
         {% if not devices %}
           <div class="alert alert-warning mt-4">
             <i class="bi bi-exclamation-circle me-2"></i>
@@ -20,12 +20,12 @@
         {% else %}
           <!-- Device Selection -->
           {% if devices|length > 1 %}
-            <div class="mb-4">
+            <div class="mb-4 sauna-device-select-wrap">
               <label for="device-select" class="form-label fw-semibold">
                 <i class="bi bi-controller me-2"></i>
                 {% trans "Select Device:" %}
               </label>
-              <select id="device-select" class="form-select" style="max-width: 400px;">
+              <select id="device-select" class="form-select sauna-device-select" style="max-width: 400px;">
                 {% for d in devices %}
                   <option value="{{ d.device_id }}">{{ d.device_id }}</option>
                 {% endfor %}
@@ -34,9 +34,9 @@
           {% endif %}
 
           <!-- Devices Container -->
-          <div id="devices-container">
+          <div id="devices-container" class="sauna-devices">
             {% for d in devices %}
-              <div class="device-view" data-device="{{ d.device_id }}" style="display: none;">
+              <div class="device-view sauna-device-view" data-device="{{ d.device_id }}" style="display: none;">
                 {% include 'core/_device_card.html' with d=d latest=latest staff_view=True %}
               </div>
             {% endfor %}
