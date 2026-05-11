@@ -299,7 +299,11 @@ def device_sse(request, device_id):
     return StreamingHttpResponse(
         event_stream(),
         content_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
     )
 
 @require_GET

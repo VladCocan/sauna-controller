@@ -1,18 +1,30 @@
 // ---------- Helpers ----------
-async function getJSON(url) {
+async function getJSON(url, timeoutMs) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 5000);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
   try {
     const r = await fetch(url, {
       credentials: "same-origin",
       cache: "no-store",
       signal: ctrl.signal,
+      headers: {
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
     });
     if (!r.ok) throw new Error("HTTP " + r.status);
     return await r.json();
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isIosStandalonePwa() {
+  const ua = window.navigator.userAgent || "";
+  const iDevice = /iPad|iPhone|iPod/.test(ua);
+  const iPadDesktopMode = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  return standalone && (iDevice || iPadDesktopMode);
 }
 
 const I18N = window.SAUNA_I18N || {};
@@ -757,10 +769,21 @@ document.addEventListener("submit", async function (ev) {
       formData.set("on", nextToggleValue ? "1" : "0");
     }
 
+    const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    const headers = {
+      "Accept": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    };
+    if (csrfInput && csrfInput.value) {
+      headers["X-CSRFToken"] = csrfInput.value;
+    }
+
     const r = await fetch(form.action, {
       method: "POST",
       body: formData,
       credentials: "same-origin",
+      cache: "no-store",
+      headers: headers,
     });
 
     if (!r.ok) {
@@ -882,12 +905,26 @@ async function refreshAll() {
 }
 
 let _es = null;
+let _sseHealthy = false;
+let _sseReconnectTimer = null;
+
+function scheduleSseReconnect(deviceId) {
+  if (_sseReconnectTimer) return;
+  _sseReconnectTimer = setTimeout(function () {
+    _sseReconnectTimer = null;
+    if (!document.hidden && deviceId) {
+      connectSSE(deviceId);
+      refreshDevice(deviceId);
+    }
+  }, isIosStandalonePwa() ? 5000 : 3000);
+}
 
 function connectSSE(deviceId) {
   if (_es) {
     _es.close();
     _es = null;
   }
+  _sseHealthy = false;
   const es = new EventSource(`/sse/${encodeURIComponent(deviceId)}/`);
 
   function handleTelemetryEvent(e) {
@@ -896,6 +933,7 @@ function connectSSE(deviceId) {
     const s = payload.status || {};
 
     // Online status — dacă primim SSE, device-ul și conexiunea sunt active.
+    _sseHealthy = true;
     setOnlineBadge(deviceId, true);
     setText("online-status-" + deviceId, t("online", "ONLINE"));
     setText("last-ack-" + deviceId, payload.last_ack_id || "");
@@ -975,11 +1013,19 @@ function connectSSE(deviceId) {
   es.addEventListener("telemetry", handleTelemetryEvent);
   es.onmessage = handleTelemetryEvent;
   es.addEventListener("ping", function () {
+    _sseHealthy = true;
     setOnlineBadge(deviceId, true);
   });
+  es.onopen = function () {
+    _sseHealthy = true;
+  };
   es.onerror = function () {
+    _sseHealthy = false;
     setOnlineBadge(deviceId, false);
     setText("online-status-" + deviceId, t("offline", "OFFLINE"));
+    try { es.close(); } catch (_) {}
+    if (_es === es) _es = null;
+    scheduleSseReconnect(deviceId);
   };
   _es = es;
   return es;
@@ -999,8 +1045,28 @@ document.addEventListener("deviceSelected", (e) => {
   refreshDevice(e.detail.deviceId);
 });
 
-// Poll lent doar pentru grafic și comenzi pending
+// Poll lent pe desktop; poll mai agresiv pe iOS PWA sau când SSE nu e sănătos.
 setInterval(() => {
   const selected = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
-  if (selected && !document.hidden) refreshDevice(selected);
-}, 30000);
+  if (!selected || document.hidden) return;
+
+  // On iOS installed PWAs, SSE can silently stall. Use HTTP polling as the
+  // primary safety net there; on desktop keep the original slow poll cadence.
+  if (isIosStandalonePwa() || !_sseHealthy) {
+    refreshDevice(selected);
+  }
+}, isIosStandalonePwa() ? 5000 : 30000);
+
+window.addEventListener("pageshow", function () {
+  const selected = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
+  if (!selected) return;
+  connectSSE(selected);
+  refreshDevice(selected);
+});
+
+document.addEventListener("visibilitychange", function () {
+  const selected = localStorage.getItem(STORAGE_KEY) || getAllDeviceIds()[0];
+  if (!selected || document.hidden) return;
+  connectSSE(selected);
+  refreshDevice(selected);
+});
