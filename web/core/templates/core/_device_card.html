@@ -2,6 +2,17 @@
 <div class="card sauna-card {% if staff_view %}sauna-card-staff{% else %}sauna-card-user{% endif %}">
   <div class="card-body p-0">
     
+    <!-- Connection Status Bar -->
+    <div class="sauna-connection-bar" id="conn-bar-{{ d.device_id }}">
+      <div class="sauna-status-indicator">
+        <span class="sauna-status-dot" id="conn-dot-{{ d.device_id }}"></span>
+        <span class="sauna-status-label" id="conn-label-{{ d.device_id }}">{% trans "Connecting" %}</span>
+      </div>
+      <div class="sauna-last-update" id="last-update-{{ d.device_id }}">
+        {% trans "Updated" %}
+      </div>
+    </div>
+
     <!-- Device Header -->
     <div class="device-header sauna-hero p-3 p-md-4 border-bottom">
       <div>

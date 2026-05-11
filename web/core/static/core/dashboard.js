@@ -585,6 +585,13 @@ async function refreshDevice(deviceId) {
     const st = await getJSON("/api/device_status?device_id=" + encodeURIComponent(deviceId));
     const s = st.status || {};
 
+    // Update connection state manager
+    if (st.online) {
+      ConnectionState.recordHeartbeat(deviceId);
+    } else {
+      ConnectionState.setState(deviceId, ConnectionState.STATE.OFFLINE);
+    }
+
     setOnlineBadge(deviceId, !!st.online);
     setText("online-status-" + deviceId, st.online ? t("online", "ONLINE") : t("offline", "OFFLINE"));
     setText("last-ack-" + deviceId, st.last_ack_id);
@@ -669,6 +676,7 @@ async function refreshDevice(deviceId) {
 
     renderPendingCommands(deviceId);
   } catch (e) {
+    ConnectionState.setError(deviceId, String(e.message || e));
     setOnlineBadge(deviceId, false);
     setText("online-status-" + deviceId, t("offline", "OFFLINE"));
   }
@@ -713,6 +721,14 @@ document.addEventListener("submit", async function (ev) {
     }
   }
 
+  // Check connection state before allowing submission
+  const deviceId = form.getAttribute("data-device");
+  if (deviceId && ConnectionState.getState(deviceId) === ConnectionState.STATE.OFFLINE) {
+    ev.preventDefault();
+    toast(t("deviceOffline", "Device is offline"), "danger");
+    return;
+  }
+
   if (form.dataset.submitting === "1") {
     ev.preventDefault();
     return;
@@ -729,7 +745,6 @@ document.addEventListener("submit", async function (ev) {
   ev.preventDefault();
   form.dataset.submitting = "1";
 
-  const deviceId = form.getAttribute("data-device");
   const isToggle = form.classList.contains("toggle");
   const toggleKey = form.getAttribute("data-what");
 
@@ -778,6 +793,10 @@ document.addEventListener("submit", async function (ev) {
       headers["X-CSRFToken"] = csrfInput.value;
     }
 
+    // Track request state
+    const requestId = "req-" + Date.now() + "-" + Math.random();
+    if (deviceId) ConnectionState.startRequest(deviceId, requestId);
+
     const r = await fetch(form.action, {
       method: "POST",
       body: formData,
@@ -787,6 +806,7 @@ document.addEventListener("submit", async function (ev) {
     });
 
     if (!r.ok) {
+      if (deviceId) ConnectionState.completeRequest(deviceId, requestId, false, "HTTP " + r.status);
       if (deviceId && formData.has("mode")) {
         clearModeOptimistic(deviceId);
         if (prevModeValue) {
@@ -807,6 +827,8 @@ document.addEventListener("submit", async function (ev) {
     let responseData = {};
     try { responseData = await r.json(); } catch (_) {}
 
+    if (deviceId) ConnectionState.completeRequest(deviceId, requestId, true);
+
     if (deviceId && responseData.command_id) {
       rememberPendingCommand(deviceId, responseData.command_id, formData.get("what") || formData.get("mode") || formData.get("key") || "command");
       toast(t("commandQueued", "Command queued"), "primary");
@@ -817,6 +839,7 @@ document.addEventListener("submit", async function (ev) {
     // UI already changed optimistically; SSE will confirm via last_ack_id.
     if (deviceId) setTimeout(function () { renderPendingCommands(deviceId); }, 1000);
   } catch (e) {
+    if (deviceId) ConnectionState.completeRequest(deviceId, requestId, false, String(e.message || e));
     if (deviceId && formData.has("mode")) {
       clearModeOptimistic(deviceId);
       if (prevModeValue) {
@@ -924,6 +947,7 @@ function connectSSE(deviceId) {
     _es.close();
     _es = null;
   }
+  ConnectionState.setConnecting(deviceId);
   _sseHealthy = false;
   const es = new EventSource(`/sse/${encodeURIComponent(deviceId)}/`);
 
@@ -932,7 +956,8 @@ function connectSSE(deviceId) {
     const payload = JSON.parse(e.data);
     const s = payload.status || {};
 
-    // Online status — dacă primim SSE, device-ul și conexiunea sunt active.
+    // Record heartbeat in connection state manager
+    ConnectionState.recordHeartbeat(deviceId);
     _sseHealthy = true;
     setOnlineBadge(deviceId, true);
     setText("online-status-" + deviceId, t("online", "ONLINE"));
@@ -1014,13 +1039,16 @@ function connectSSE(deviceId) {
   es.onmessage = handleTelemetryEvent;
   es.addEventListener("ping", function () {
     _sseHealthy = true;
+    ConnectionState.recordHeartbeat(deviceId);
     setOnlineBadge(deviceId, true);
   });
   es.onopen = function () {
     _sseHealthy = true;
+    ConnectionState.recordHeartbeat(deviceId);
   };
   es.onerror = function () {
     _sseHealthy = false;
+    ConnectionState.setError(deviceId, 'SSE connection failed');
     setOnlineBadge(deviceId, false);
     setText("online-status-" + deviceId, t("offline", "OFFLINE"));
     try { es.close(); } catch (_) {}
@@ -1070,3 +1098,63 @@ document.addEventListener("visibilitychange", function () {
   connectSSE(selected);
   refreshDevice(selected);
 });
+
+// Initialize connection state UI for all devices
+getAllDeviceIds().forEach(function (deviceId) {
+  ConnectionState.initDevice(deviceId);
+  
+  // Listen for connection state changes and update UI
+  ConnectionState.onStateChange(deviceId, function (devId, newState) {
+    updateConnectionStatusUI(devId, newState);
+  });
+  
+  // Listen for last-update changes and update UI
+  ConnectionState.onLastUpdateChange(deviceId, function (devId, formattedTime) {
+    updateLastUpdateUI(devId, formattedTime);
+  });
+});
+
+/**
+ * Update the connection status indicator in the UI
+ */
+function updateConnectionStatusUI(deviceId, state) {
+  const dot = document.getElementById("conn-dot-" + deviceId);
+  const label = document.getElementById("conn-label-" + deviceId);
+  const bar = document.getElementById("conn-bar-" + deviceId);
+  
+  if (!dot || !label || !bar) return;
+  
+  // Remove all state classes
+  dot.classList.remove("online", "connecting", "offline", "error");
+  
+  // Apply state-specific styling
+  const stateColor = {
+    [ConnectionState.STATE.ONLINE]: { color: "success", label: t("online", "ONLINE"), class: "online" },
+    [ConnectionState.STATE.CONNECTING]: { color: "warning", label: t("connecting", "CONNECTING"), class: "connecting" },
+    [ConnectionState.STATE.OFFLINE]: { color: "danger", label: t("offline", "OFFLINE"), class: "offline" },
+    [ConnectionState.STATE.ERROR]: { color: "danger", label: t("error", "ERROR"), class: "error" },
+  };
+  
+  const config = stateColor[state] || stateColor[ConnectionState.STATE.OFFLINE];
+  dot.classList.add(config.class);
+  label.textContent = config.label;
+  
+  // Add offline class to card for disabling controls
+  const card = document.querySelector('.device-view[data-device="' + deviceId + '"] .sauna-card');
+  if (card) {
+    if (state === ConnectionState.STATE.OFFLINE) {
+      card.classList.add("sauna-offline");
+    } else {
+      card.classList.remove("sauna-offline");
+    }
+  }
+}
+
+/**
+ * Update the last-update indicator in the UI
+ */
+function updateLastUpdateUI(deviceId, formattedTime) {
+  const el = document.getElementById("last-update-" + deviceId);
+  if (!el) return;
+  el.textContent = formattedTime;
+}
