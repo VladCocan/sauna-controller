@@ -5,18 +5,22 @@
     <div class="d-flex justify-content-between align-items-start mb-3">
       <div>
         <div class="fw-bold h5 mb-1">{{ d.device_id }}</div>
-        <div class="text-muted small">
-          {% trans "Last seen:" %} <span id="lastseen-{{ d.device_id }}">{{ d.last_seen|default:"—" }}</span>
-        </div>
+        {% if staff_view %}
+          <div class="text-muted small">
+            {% trans "Last seen:" %} <span id="lastseen-{{ d.device_id }}">{{ d.last_seen|default:"—" }}</span>
+          </div>
+        {% endif %}
       </div>
 
       <div class="d-flex align-items-center gap-2" style="flex-wrap: wrap;">
         <span class="badge text-bg-secondary" id="online-{{ d.device_id }}">—</span>
         <span class="badge" id="sauna-status-{{ d.device_id }}">—</span>
-        <span class="badge" id="light-status-{{ d.device_id }}">—</span>
-        <span class="badge" id="fan-status-{{ d.device_id }}">—</span>
-        <span class="badge" id="amp-status-{{ d.device_id }}">—</span>
-        <span class="badge text-bg-secondary">{% trans "ack:" %} {{ d.last_ack_id }}</span>
+        {% if staff_view %}
+          <span class="badge" id="light-status-{{ d.device_id }}">—</span>
+          <span class="badge" id="fan-status-{{ d.device_id }}">—</span>
+          <span class="badge" id="amp-status-{{ d.device_id }}">—</span>
+          <span class="badge text-bg-secondary">{% trans "ack:" %} {{ d.last_ack_id }}</span>
+        {% endif %}
       </div>
     </div>
 
@@ -29,14 +33,16 @@
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="settings-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#settings-{{ d.device_id }}" type="button" role="tab" aria-controls="settings-{{ d.device_id }}" aria-selected="false">
-          {% trans "Settings" %}
+          {% trans "Control" %}
         </button>
       </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="diagnostic-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#diagnostic-{{ d.device_id }}" type="button" role="tab" aria-controls="diagnostic-{{ d.device_id }}" aria-selected="false">
-          {% trans "Diagnostic" %}
-        </button>
-      </li>
+      {% if staff_view %}
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="diagnostic-tab-{{ d.device_id }}" data-bs-toggle="tab" data-bs-target="#diagnostic-{{ d.device_id }}" type="button" role="tab" aria-controls="diagnostic-{{ d.device_id }}" aria-selected="false">
+            {% trans "Diagnostic" %}
+          </button>
+        </li>
+      {% endif %}
     </ul>
 
     <!-- Tab Content -->
@@ -46,117 +52,157 @@
       <div class="tab-pane fade show active" id="status-{{ d.device_id }}" role="tabpanel">
         {% with payload=latest|get_item:d.id %}
           {% with s=payload.status %}
-            <div class="row g-2">
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Heater" %}</div>
-                  <div id="mode-{{ d.device_id }}" class="h5 mb-0">
-                    {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
-                      <span class="badge text-bg-success">ON</span>
-                    {% else %}
-                      <span class="badge text-bg-secondary">OFF</span>
-                    {% endif %}
+            {% if staff_view %}
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Heater" %}</div>
+                    <div id="mode-{{ d.device_id }}" class="h5 mb-0">
+                      {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
+                        <span class="badge text-bg-success">ON</span>
+                      {% else %}
+                        <span class="badge text-bg-secondary">OFF</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Setpoint" %}</div>
+                    <div class="h5 mb-0"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Temperature Top" %}</div>
+                    <div class="h5 mb-0"><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Temperature Head" %}</div>
+                    <div class="h5 mb-0"><span id="thead-{{ d.device_id }}">{{ s.t_head_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Temperature Under" %}</div>
+                    <div class="h5 mb-0"><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Outdoor" %}</div>
+                    <div class="h5 mb-0"><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "ETA to Setpoint" %}</div>
+                    <div class="h5 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Control Temp" %}</div>
+                    <div class="h5 mb-0"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Control Temp Source" %}</div>
+                    <div class="h5 mb-0" id="control-temp-source-{{ d.device_id }}">
+                      {% if s.control_temp_source_active %}
+                        {{ s.control_temp_source_active }}
+                      {% elif s.control_temp_source %}
+                        {{ s.control_temp_source }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Control Temp Valid" %}</div>
+                    <div class="h5 mb-0" id="control-temp-valid-{{ d.device_id }}">{{ s.control_temp_valid|default:"—" }}</div>
+                  </div>
+                </div>
+
+                <div class="col-6">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-1">{% trans "Strat Delta" %}</div>
+                    <div class="h5 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|floatformat:1|default:"—" }}</span>°C</div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="p-3 bg-light border rounded">
+                    <div class="text-muted small mb-2">{% trans "Temperature Chart" %}</div>
+                    <div class="d-flex justify-content-end mb-2 gap-1">
+                      <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="0.5">30m</button>
+                      <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="2">2h</button>
+                      <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="8">8h</button>
+                    </div>
+                    <div style="position: relative; height: 300px; width: 100%;">
+                      <canvas id="chart-{{ d.device_id }}"></canvas>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Setpoint" %}</div>
-                  <div class="h5 mb-0"><span id="sp-{{ d.device_id }}">{{ s.setpoint_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Temperature Top" %}</div>
-                  <div class="h5 mb-0"><span id="ttop-{{ d.device_id }}">{{ s.t_top_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Temperature Head" %}</div>
-                  <div class="h5 mb-0"><span id="thead-{{ d.device_id }}">{{ s.t_head_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Temperature Under" %}</div>
-                  <div class="h5 mb-0"><span id="tunder-{{ d.device_id }}">{{ s.t_under_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Outdoor" %}</div>
-                  <div class="h5 mb-0"><span id="outdoor-temp-{{ d.device_id }}">{{ s.t_outdoor_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "ETA to Setpoint" %}</div>
-                  <div class="h5 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Control Temp" %}</div>
-                  <div class="h5 mb-0"><span id="control-temp-value-{{ d.device_id }}">{{ s.t_control|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Control Temp Source" %}</div>
-                  <div class="h5 mb-0" id="control-temp-source-{{ d.device_id }}">
-                    {% if s.control_temp_source_active %}
-                      {{ s.control_temp_source_active }}
-                    {% elif s.control_temp_source %}
-                      {{ s.control_temp_source }}
-                    {% else %}
-                      —
-                    {% endif %}
+            {% else %}
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="p-3 bg-light border rounded h-100">
+                    <div class="text-muted small mb-1">{% trans "Current Temperature" %}</div>
+                    <div class="display-6 mb-0">
+                      <span id="control-temp-value-{{ d.device_id }}">
+                        {% if s.t_control is not None %}
+                          {{ s.t_control|floatformat:1 }}
+                        {% elif s.t_head_c is not None %}
+                          {{ s.t_head_c|floatformat:1 }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </span>°C
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Control Temp Valid" %}</div>
-                  <div class="h5 mb-0" id="control-temp-valid-{{ d.device_id }}">{{ s.control_temp_valid|default:"—" }}</div>
-                </div>
-              </div>
-
-              <div class="col-6">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-1">{% trans "Strat Delta" %}</div>
-                  <div class="h5 mb-0"><span id="control-strat-delta-{{ d.device_id }}">{{ s.strat_delta_c|floatformat:1|default:"—" }}</span>°C</div>
-                </div>
-              </div>
-
-              <div class="col-12">
-                <div class="p-3 bg-light border rounded">
-                  <div class="text-muted small mb-2">{% trans "Temperature Chart" %}</div>
-                  <div class="d-flex justify-content-end mb-2 gap-1">
-                    <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="0.5">30m</button>
-                    <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="2">2h</button>
-                    <button class="btn btn-outline-secondary btn-sm chart-range" data-device="{{ d.device_id }}" data-hours="8">8h</button>
+                <div class="col-md-4">
+                  <div class="p-3 bg-light border rounded h-100">
+                    <div class="text-muted small mb-1">{% trans "Sauna Status" %}</div>
+                    <div id="mode-{{ d.device_id }}" class="h5 mb-0">
+                      {% if s.mode == "HEAT" or s.heater_power_pct > 0 %}
+                        <span class="badge text-bg-success">ON</span>
+                      {% else %}
+                        <span class="badge text-bg-secondary">OFF</span>
+                      {% endif %}
+                    </div>
                   </div>
-                  <div style="position: relative; height: 300px; width: 100%;">
-                    <canvas id="chart-{{ d.device_id }}"></canvas>
+                </div>
+                <div class="col-md-4">
+                  <div class="p-3 bg-light border rounded h-100">
+                    <div class="text-muted small mb-1">{% trans "Timer" %}</div>
+                    <div class="h5 mb-0"><span id="eta-setpoint-{{ d.device_id }}">—</span></div>
                   </div>
                 </div>
               </div>
             </div>
+            {% endif %}
           {% endwith %}
         {% endwith %}
       </div>
 
-      <!-- SETTINGS TAB -->
+      <!-- CONTROL TAB -->
       <div class="tab-pane fade" id="settings-{{ d.device_id }}" role="tabpanel">
         <div class="row g-3">
           
@@ -289,166 +335,168 @@
         </div>
       </div>
 
-      <!-- DIAGNOSTIC TAB -->
-      <div class="tab-pane fade" id="diagnostic-{{ d.device_id }}" role="tabpanel">
-        <div class="row g-3">
-          <div class="col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <h6 class="card-title d-flex align-items-center gap-2 mb-3">
-                  <i class="bi bi-sliders text-primary"></i>
-                  {% trans "Config Parameters" %}
-                </h6>
+      {% if staff_view %}
+        <!-- DIAGNOSTIC TAB -->
+        <div class="tab-pane fade" id="diagnostic-{{ d.device_id }}" role="tabpanel">
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <h6 class="card-title d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-sliders text-primary"></i>
+                    {% trans "Config Parameters" %}
+                  </h6>
 
-                <div class="d-flex flex-column gap-2">
-                  <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="number" />
-                    <input type="hidden" name="key" value="boost_window" />
-                    <label class="form-label small mb-1">{% trans "Boost Window (degC)" %}</label>
-                    <div class="input-group">
-                      <input id="diag-boost-window-{{ d.device_id }}" name="value" type="number" class="form-control" min="5" max="30" step="1" value="15" />
-                      <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
-                    </div>
-                  </form>
+                  <div class="d-flex flex-column gap-2">
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="number" />
+                      <input type="hidden" name="key" value="boost_window" />
+                      <label class="form-label small mb-1">{% trans "Boost Window (degC)" %}</label>
+                      <div class="input-group">
+                        <input id="diag-boost-window-{{ d.device_id }}" name="value" type="number" class="form-control" min="5" max="30" step="1" value="15" />
+                        <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
+                      </div>
+                    </form>
 
-                  <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="number" />
-                    <input type="hidden" name="key" value="boost_exit" />
-                    <label class="form-label small mb-1">{% trans "Boost Exit (degC)" %}</label>
-                    <div class="input-group">
-                      <input id="diag-boost-exit-{{ d.device_id }}" name="value" type="number" class="form-control" min="2" max="15" step="1" value="5" />
-                      <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
-                    </div>
-                  </form>
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="number" />
+                      <input type="hidden" name="key" value="boost_exit" />
+                      <label class="form-label small mb-1">{% trans "Boost Exit (degC)" %}</label>
+                      <div class="input-group">
+                        <input id="diag-boost-exit-{{ d.device_id }}" name="value" type="number" class="form-control" min="2" max="15" step="1" value="5" />
+                        <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
+                      </div>
+                    </form>
 
-                  <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="number" />
-                    <input type="hidden" name="key" value="max_session_min" />
-                    <label class="form-label small mb-1">{% trans "Max Session (min)" %}</label>
-                    <div class="input-group">
-                      <input id="diag-max-session-{{ d.device_id }}" name="value" type="number" class="form-control" min="30" max="240" step="5" value="120" />
-                      <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
-                    </div>
-                  </form>
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="number" />
+                      <input type="hidden" name="key" value="max_session_min" />
+                      <label class="form-label small mb-1">{% trans "Max Session (min)" %}</label>
+                      <div class="input-group">
+                        <input id="diag-max-session-{{ d.device_id }}" name="value" type="number" class="form-control" min="30" max="240" step="5" value="120" />
+                        <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
+                      </div>
+                    </form>
 
-                  <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="number" />
-                    <input type="hidden" name="key" value="fan_dt_sp" />
-                    <label class="form-label small mb-1">{% trans "Fan dT Setpoint (degC)" %}</label>
-                    <div class="input-group">
-                      <input id="diag-fan-dt-{{ d.device_id }}" name="value" type="number" class="form-control" min="1" max="250" step="0.5" value="50" />
-                      <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
-                    </div>
-                  </form>
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="number" />
+                      <input type="hidden" name="key" value="fan_dt_sp" />
+                      <label class="form-label small mb-1">{% trans "Fan dT Setpoint (degC)" %}</label>
+                      <div class="input-group">
+                        <input id="diag-fan-dt-{{ d.device_id }}" name="value" type="number" class="form-control" min="1" max="250" step="0.5" value="50" />
+                        <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
+                      </div>
+                    </form>
 
-                  <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="select" />
-                    <input type="hidden" name="key" value="control_temp_source" />
-                    <label class="form-label small mb-1">{% trans "Control Temp Source" %}</label>
-                    <div class="input-group">
-                      <select id="diag-control-source-{{ d.device_id }}" name="option" class="form-select">
-                        <option>Average (Top+Head)</option>
-                        <option>Top</option>
-                        <option>Head</option>
-                      </select>
-                      <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
-                    </div>
-                  </form>
+                    <form class="ajax" data-device="{{ d.device_id }}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="select" />
+                      <input type="hidden" name="key" value="control_temp_source" />
+                      <label class="form-label small mb-1">{% trans "Control Temp Source" %}</label>
+                      <div class="input-group">
+                        <select id="diag-control-source-{{ d.device_id }}" name="option" class="form-select">
+                          <option>Average (Top+Head)</option>
+                          <option>Top</option>
+                          <option>Head</option>
+                        </select>
+                        <button class="btn btn-outline-primary" type="submit">{% trans "Apply" %}</button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-body">
-                <h6 class="card-title d-flex align-items-center gap-2 mb-3">
-                  <i class="bi bi-tools text-danger"></i>
-                  {% trans "Maintenance Actions" %}
-                </h6>
+            <div class="col-lg-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                  <h6 class="card-title d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-tools text-danger"></i>
+                    {% trans "Maintenance Actions" %}
+                  </h6>
 
-                <div class="d-grid gap-2">
-                  <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for Sauna Energy?' %}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="button" />
-                    <input type="hidden" name="key" value="reset_energy" />
-                    <button class="btn btn-outline-danger" type="submit">{% trans "Reset Sauna Energy" %}</button>
-                  </form>
+                  <div class="d-grid gap-2">
+                    <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for Sauna Energy?' %}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="button" />
+                      <input type="hidden" name="key" value="reset_energy" />
+                      <button class="btn btn-outline-danger" type="submit">{% trans "Reset Sauna Energy" %}</button>
+                    </form>
 
-                  <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for runtime counters?' %}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="button" />
-                    <input type="hidden" name="key" value="reset_runtime" />
-                    <button class="btn btn-outline-danger" type="submit">{% trans "Reset Runtime Counters" %}</button>
-                  </form>
+                    <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for runtime counters?' %}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="button" />
+                      <input type="hidden" name="key" value="reset_runtime" />
+                      <button class="btn btn-outline-danger" type="submit">{% trans "Reset Runtime Counters" %}</button>
+                    </form>
 
-                  <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for ETA calibration?' %}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="button" />
-                    <input type="hidden" name="key" value="reset_eta" />
-                    <button class="btn btn-outline-danger" type="submit">{% trans "Reset ETA Calibration" %}</button>
-                  </form>
+                    <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for ETA calibration?' %}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="button" />
+                      <input type="hidden" name="key" value="reset_eta" />
+                      <button class="btn btn-outline-danger" type="submit">{% trans "Reset ETA Calibration" %}</button>
+                    </form>
 
-                  <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for thermal model?' %}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="button" />
-                    <input type="hidden" name="key" value="reset_thermal" />
-                    <button class="btn btn-outline-danger" type="submit">{% trans "Reset Thermal Model" %}</button>
-                  </form>
+                    <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm reset for thermal model?' %}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="button" />
+                      <input type="hidden" name="key" value="reset_thermal" />
+                      <button class="btn btn-outline-danger" type="submit">{% trans "Reset Thermal Model" %}</button>
+                    </form>
 
-                  <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm controller restart? Device will disconnect briefly.' %}" method="post" action="{% url 'set_diagnostic' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="device_id" value="{{ d.device_id }}" />
-                    <input type="hidden" name="kind" value="button" />
-                    <input type="hidden" name="key" value="restart" />
-                    <button class="btn btn-danger" type="submit">{% trans "Restart Controller" %}</button>
-                  </form>
+                    <form class="ajax confirm-action" data-device="{{ d.device_id }}" data-confirm="{% trans 'Confirm controller restart? Device will disconnect briefly.' %}" method="post" action="{% url 'set_diagnostic' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="device_id" value="{{ d.device_id }}" />
+                      <input type="hidden" name="kind" value="button" />
+                      <input type="hidden" name="key" value="restart" />
+                      <button class="btn btn-danger" type="submit">{% trans "Restart Controller" %}</button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="col-12">
-            <div class="p-3 bg-light border rounded">
-              <div class="text-muted small mb-2"><strong>{% trans "Live Diagnostics" %}</strong></div>
-              <div id="diag-list-{{ d.device_id }}" class="small" style="max-height: 360px; overflow-y: auto; background-color: #fff; padding: 10px; border-radius: 4px;">{% trans "Loading..." %}</div>
+            <div class="col-12">
+              <div class="p-3 bg-light border rounded">
+                <div class="text-muted small mb-2"><strong>{% trans "Live Diagnostics" %}</strong></div>
+                <div id="diag-list-{{ d.device_id }}" class="small" style="max-height: 360px; overflow-y: auto; background-color: #fff; padding: 10px; border-radius: 4px;">{% trans "Loading..." %}</div>
+              </div>
             </div>
-          </div>
 
-          <div class="col-12">
-            <div class="p-3 bg-light border rounded">
-              <div class="text-muted small mb-2"><strong>{% trans "Pending Commands" %}</strong></div>
-              <pre class="small mb-0" style="max-height: 250px; overflow-y: auto; background-color: #fff; padding: 10px; border-radius: 4px;" id="cmds-{{ d.device_id }}">—</pre>
+            <div class="col-12">
+              <div class="p-3 bg-light border rounded">
+                <div class="text-muted small mb-2"><strong>{% trans "Pending Commands" %}</strong></div>
+                <pre class="small mb-0" style="max-height: 250px; overflow-y: auto; background-color: #fff; padding: 10px; border-radius: 4px;" id="cmds-{{ d.device_id }}">—</pre>
+              </div>
             </div>
-          </div>
 
-          <div class="col-12">
-            <div class="p-3 bg-light border rounded">
-              <div class="text-muted small mb-2"><strong>{% trans "Device Information" %}</strong></div>
-              <div class="small">
-                <div class="mb-1"><strong>{% trans "Device ID:" %}</strong> <code>{{ d.device_id }}</code></div>
-                <div class="mb-1"><strong>{% trans "Owner:" %}</strong> {{ d.owner }}</div>
-                <div class="mb-1"><strong>{% trans "Last ACK ID:" %}</strong> <span id="last-ack-{{ d.device_id }}">{{ d.last_ack_id }}</span></div>
-                <div><strong>{% trans "Status:" %}</strong> <span id="online-status-{{ d.device_id }}">—</span></div>
+            <div class="col-12">
+              <div class="p-3 bg-light border rounded">
+                <div class="text-muted small mb-2"><strong>{% trans "Device Information" %}</strong></div>
+                <div class="small">
+                  <div class="mb-1"><strong>{% trans "Device ID:" %}</strong> <code>{{ d.device_id }}</code></div>
+                  <div class="mb-1"><strong>{% trans "Owner:" %}</strong> {{ d.owner }}</div>
+                  <div class="mb-1"><strong>{% trans "Last ACK ID:" %}</strong> <span id="last-ack-{{ d.device_id }}">{{ d.last_ack_id }}</span></div>
+                  <div><strong>{% trans "Status:" %}</strong> <span id="online-status-{{ d.device_id }}">—</span></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      {% endif %}
 
     </div>
   </div>

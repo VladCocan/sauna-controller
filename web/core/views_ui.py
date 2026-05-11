@@ -1,6 +1,7 @@
 import json
 import queue
 import time
+from functools import wraps
 from django.conf import settings as django_settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, StreamingHttpResponse
@@ -38,6 +39,16 @@ BUTTON_COMMANDS = {
     "reset_eta",
     "reset_thermal",
 }
+
+
+def staff_required_json(view_func):
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_staff:
+            return JsonResponse({"error": "Forbidden"}, status=403)
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
 
 
 def get_device_for_user(device_id: str, user):
@@ -114,6 +125,7 @@ def device_status(request):
 
 @login_required
 @require_GET
+@staff_required_json
 def device_commands(request):
     device_id = request.GET.get("device_id")
     if not device_id:
@@ -128,6 +140,7 @@ def device_commands(request):
 
 @login_required
 def dashboard(request):
+    is_staff = request.user.is_staff
     devices = list(
         Device.objects.filter(
             Q(owner=request.user) | Q(shared_users=request.user)
@@ -137,13 +150,24 @@ def dashboard(request):
     latest = {}
     for d in devices:
         t = Telemetry.objects.filter(device=d).order_by("-ts").first()
-        latest[d.id] = t.payload if t else None
+        payload = t.payload if t else {}
+        if not isinstance(payload, dict):
+            payload = {}
+
+        status = payload.get("status")
+        if not isinstance(status, dict):
+            status = {}
+
+        # Ensure templates always receive mapping-like telemetry structures.
+        payload["status"] = status
+        latest[d.id] = payload
 
     # diagnostics are provided by the device via its status payload; frontend will fetch them
-    return render(request, "core/dashboard.html", {
+    return render(request, "core/dashboard.html" if is_staff else "core/dashboard_user.html", {
         "devices": devices,
         "latest": latest,
         "build": django_settings.APP_BUILD,
+        "staff_view": is_staff,
     })
 
 
@@ -199,6 +223,7 @@ def set_switch(request):
 
 @login_required
 @require_http_methods(["POST"])
+@staff_required_json
 def set_diagnostic(request):
     device_id = request.POST.get("device_id")
     kind = request.POST.get("kind")

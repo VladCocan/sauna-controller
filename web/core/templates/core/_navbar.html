@@ -37,7 +37,9 @@
         </button>
       </form>
 
-      <a class="btn btn-outline-primary btn-sm" href="/admin/">{% trans "Admin" %}</a>
+      {% if request.user.is_staff %}
+        <a class="btn btn-outline-primary btn-sm" href="/admin/">{% trans "Admin" %}</a>
+      {% endif %}
     </div>
   </div>
 </nav>
