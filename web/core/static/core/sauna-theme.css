@@ -1,0 +1,376 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  --sauna-bg-0: #13110f;
+  --sauna-bg-1: #1a1714;
+  --sauna-bg-2: #24201c;
+  --sauna-card: rgba(33, 28, 24, 0.9);
+  --sauna-card-soft: rgba(43, 37, 32, 0.84);
+  --sauna-border: rgba(255, 177, 102, 0.22);
+  --sauna-text: #f6ede2;
+  --sauna-muted: #c4b3a3;
+  --sauna-accent: #ff9f43;
+  --sauna-accent-strong: #ff7a18;
+  --sauna-accent-soft: rgba(255, 159, 67, 0.18);
+  --sauna-success: #4fda8a;
+  --sauna-danger: #ff6d5e;
+  --sauna-touch-min: 44px;
+  --sauna-radius-xl: 1.15rem;
+  --sauna-radius-lg: 0.95rem;
+  --sauna-radius-md: 0.75rem;
+  --sauna-shadow: 0 14px 44px rgba(0, 0, 0, 0.36);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body.sauna-app {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--sauna-text);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(255, 122, 24, 0.2), transparent 35%),
+    radial-gradient(circle at 10% 0%, rgba(255, 180, 96, 0.11), transparent 36%),
+    linear-gradient(145deg, var(--sauna-bg-0) 0%, var(--sauna-bg-1) 55%, #0f0d0b 100%);
+}
+
+.sauna-app .container,
+.sauna-app .container-fluid {
+  max-width: 1280px;
+}
+
+.sauna-main {
+  padding-top: 1rem;
+  padding-bottom: 6.5rem;
+}
+
+.sauna-app .navbar {
+  background: rgba(22, 18, 15, 0.9) !important;
+  border-bottom: 1px solid var(--sauna-border) !important;
+  backdrop-filter: blur(8px);
+}
+
+.sauna-app .navbar-brand,
+.sauna-app .navbar .text-muted,
+.sauna-app .navbar .form-select,
+.sauna-app .navbar .btn {
+  color: var(--sauna-text);
+}
+
+.sauna-app .navbar .form-select,
+.sauna-app .navbar .btn {
+  border-color: var(--sauna-border);
+  background-color: rgba(49, 41, 35, 0.78);
+}
+
+.sauna-shell {
+  position: relative;
+}
+
+.sauna-shell::before {
+  content: "";
+  position: absolute;
+  inset: -12px 8px auto;
+  height: 160px;
+  background: radial-gradient(circle at center, rgba(255, 159, 67, 0.2), transparent 70%);
+  pointer-events: none;
+}
+
+.sauna-device-select-wrap {
+  max-width: 420px;
+}
+
+.sauna-device-select {
+  background: rgba(52, 44, 37, 0.9);
+  color: var(--sauna-text);
+  border: 1px solid var(--sauna-border);
+}
+
+.sauna-card {
+  border: 1px solid var(--sauna-border);
+  border-radius: var(--sauna-radius-xl);
+  box-shadow: var(--sauna-shadow);
+  background: linear-gradient(160deg, var(--sauna-card) 0%, rgba(24, 20, 17, 0.95) 100%);
+  overflow: hidden;
+}
+
+.sauna-card .card-body,
+.sauna-card .card-header {
+  color: var(--sauna-text);
+  background: transparent;
+  border-color: rgba(255, 177, 102, 0.18);
+}
+
+.sauna-hero {
+  background: linear-gradient(150deg, rgba(255, 122, 24, 0.11), rgba(255, 159, 67, 0.05) 45%, rgba(33, 28, 24, 0.7));
+}
+
+.sauna-card-label,
+.sauna-card .status-card-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sauna-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.sauna-card .device-title {
+  color: var(--sauna-text);
+}
+
+.sauna-card .device-info {
+  color: #dec9b2;
+}
+
+.sauna-temp,
+.sauna-card .temperature-display {
+  font-size: clamp(3rem, 10vw, 5rem);
+  line-height: 1;
+  font-weight: 700;
+  color: #ffe2c4;
+  text-shadow: 0 0 20px rgba(255, 133, 32, 0.28);
+}
+
+.sauna-card .temperature-unit {
+  font-size: 1.25rem;
+  color: #ffc792;
+}
+
+.sauna-status .badge,
+.sauna-card .badge {
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+
+.sauna-inline-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.sauna-inline-stat {
+  background: var(--sauna-card-soft);
+  border: 1px solid rgba(255, 177, 102, 0.16);
+  border-radius: var(--sauna-radius-md);
+  padding: 0.55rem 0.6rem;
+}
+
+.sauna-inline-stat small {
+  display: block;
+  color: var(--sauna-muted);
+  margin-bottom: 0.2rem;
+}
+
+.sauna-inline-stat strong {
+  color: #ffe8d0;
+}
+
+.sauna-metric-tile {
+  height: 100%;
+  border-radius: var(--sauna-radius-md);
+  border: 1px solid rgba(255, 177, 102, 0.14);
+  background: var(--sauna-card-soft);
+  padding: 0.75rem;
+  color: var(--sauna-text);
+}
+
+.sauna-metric-tile small {
+  color: var(--sauna-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.sauna-tabs {
+  border-bottom-color: rgba(255, 177, 102, 0.2) !important;
+  background: rgba(27, 23, 19, 0.6);
+}
+
+.sauna-tab-link {
+  color: var(--sauna-muted) !important;
+  border-radius: 0;
+}
+
+.sauna-tab-link.active {
+  color: var(--sauna-accent) !important;
+  border-bottom: 3px solid var(--sauna-accent) !important;
+  background: rgba(255, 159, 67, 0.06) !important;
+}
+
+.sauna-tab-content {
+  background: linear-gradient(180deg, rgba(23, 20, 17, 0.4), rgba(23, 20, 17, 0));
+}
+
+.sauna-card-inner {
+  border: 1px solid rgba(255, 177, 102, 0.14);
+  border-radius: var(--sauna-radius-lg);
+  background: linear-gradient(165deg, rgba(49, 41, 35, 0.74) 0%, rgba(30, 25, 21, 0.88) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 229, 198, 0.07);
+}
+
+.sauna-card-inner.card {
+  background: linear-gradient(165deg, rgba(49, 41, 35, 0.74) 0%, rgba(30, 25, 21, 0.88) 100%);
+}
+
+.sauna-card-inner .card-header {
+  border-bottom-color: rgba(255, 177, 102, 0.15);
+}
+
+.sauna-control-panel .form-control,
+.sauna-control-panel .form-select,
+.sauna-control-panel .input-group-text {
+  background: rgba(37, 31, 27, 0.95);
+  color: var(--sauna-text);
+  border-color: rgba(255, 177, 102, 0.2);
+}
+
+.sauna-control-panel .form-range::-webkit-slider-thumb {
+  background: var(--sauna-accent);
+}
+
+.sauna-control-panel .form-range::-moz-range-thumb {
+  background: var(--sauna-accent);
+}
+
+.sauna-control-panel .btn,
+.sauna-action-bar .btn,
+.sauna-card .btn {
+  min-height: var(--sauna-touch-min);
+  border-radius: 0.82rem;
+}
+
+.sauna-app .btn-warning {
+  color: #2d1907;
+  background: linear-gradient(180deg, #ffbd6c, #ff9f43);
+  border-color: #ffae56;
+  box-shadow: 0 10px 24px rgba(255, 132, 32, 0.28);
+}
+
+.sauna-app .btn-warning:hover {
+  color: #1f1208;
+  background: linear-gradient(180deg, #ffc57b, #ffa84f);
+}
+
+.sauna-app .btn-outline-light,
+.sauna-app .btn-outline-secondary,
+.sauna-app .btn-outline-primary,
+.sauna-app .btn-outline-warning,
+.sauna-app .btn-outline-danger {
+  color: #f6ede2;
+  border-color: rgba(255, 177, 102, 0.32);
+  background: rgba(47, 40, 34, 0.72);
+}
+
+.sauna-app .btn-outline-light:hover,
+.sauna-app .btn-outline-secondary:hover,
+.sauna-app .btn-outline-primary:hover,
+.sauna-app .btn-outline-warning:hover,
+.sauna-app .btn-outline-danger:hover {
+  background: rgba(255, 159, 67, 0.14);
+  border-color: rgba(255, 177, 102, 0.48);
+  color: #ffe9d0;
+}
+
+.sauna-app .btn-danger {
+  background: linear-gradient(180deg, #ff7d6f, #e64f3f);
+  border-color: #d14839;
+}
+
+.sauna-action-bar {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sauna-remote-hero {
+  text-align: center;
+}
+
+.sauna-staff-grid .sauna-card-inner.sauna-hero {
+  text-align: center;
+}
+
+.sauna-chart-panel .chart-wrapper {
+  height: min(44vh, 320px);
+}
+
+.sauna-app .table {
+  color: var(--sauna-text);
+}
+
+.sauna-app .table-striped > tbody > tr:nth-of-type(odd) > * {
+  color: var(--sauna-text);
+  background-color: rgba(255, 177, 102, 0.05);
+}
+
+.sauna-app pre,
+.sauna-app code {
+  color: #ffe7cc;
+}
+
+.sauna-app .alert-warning {
+  background: rgba(255, 183, 102, 0.12);
+  color: #ffd7ad;
+  border-color: rgba(255, 183, 102, 0.42);
+}
+
+.sauna-app .toast {
+  border-radius: var(--sauna-radius-md);
+}
+
+@media (max-width: 767.98px) {
+  .sauna-main {
+    padding-bottom: 7rem;
+  }
+
+  .sauna-inline-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .sauna-action-bar {
+    position: sticky;
+    bottom: calc(0.6rem + var(--safe-bottom, 0px));
+    z-index: 12;
+    padding: 0.5rem;
+    border-radius: var(--sauna-radius-md);
+    backdrop-filter: blur(8px);
+    background: rgba(18, 15, 12, 0.82);
+    border: 1px solid rgba(255, 177, 102, 0.26);
+  }
+
+  .sauna-control-panel .btn-lg {
+    font-size: 1rem;
+  }
+
+  .sauna-card .nav-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+@media (min-width: 768px) {
+  .sauna-staff-grid .sauna-card-inner {
+    padding: 1rem;
+  }
+
+  .sauna-remote-hero {
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .sauna-control-panel .btn-lg {
+    min-height: 50px;
+  }
+}
+
+@media (min-width: 992px) {
+  .sauna-main {
+    padding-top: 1.25rem;
+  }
+
+  .sauna-card-user .sauna-control-panel {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
