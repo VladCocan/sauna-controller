@@ -1,0 +1,698 @@
+/* ============================================================================
+   Sauna Dashboard - Mobile-First Responsive Styling
+   ============================================================================ */
+
+:root {
+  /* Color scheme */
+  --primary-color: #A34A17;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --light-bg: #f8f9fa;
+  --dark-text: #212529;
+  --muted-text: #6c757d;
+  --border-color: #dee2e6;
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  
+  /* Touch targets (mobile-friendly) */
+  --touch-target: 44px;
+  
+  /* Responsive breakpoints */
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+html,
+body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+body {
+  background-color: var(--light-bg);
+  color: var(--dark-text);
+}
+
+/* ============================================================================
+   Container & Layout
+   ============================================================================ */
+
+.container,
+.container-fluid {
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+}
+
+@media (min-width: 576px) {
+  .container,
+  .container-fluid {
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+}
+
+main,
+.main-content {
+  padding-top: var(--spacing-md);
+  padding-bottom: var(--spacing-xl);
+}
+
+/* ============================================================================
+   Cards & Sections
+   ============================================================================ */
+
+.card {
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: var(--spacing-lg);
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  background-color: transparent;
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--spacing-md);
+  font-weight: 600;
+}
+
+.card-body {
+  padding: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .card-body {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* ============================================================================
+   Status & Temperature Cards
+   ============================================================================ */
+
+.status-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-lg);
+  text-align: center;
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  min-height: 140px;
+}
+
+.status-card-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.status-card-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  line-height: 1;
+}
+
+.status-card-unit {
+  font-size: 1rem;
+  color: var(--muted-text);
+  margin-left: 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .status-card-value {
+    font-size: 3rem;
+  }
+}
+
+/* Large temperature display */
+.temperature-display {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--dark-text);
+}
+
+@media (min-width: 768px) {
+  .temperature-display {
+    font-size: 4.5rem;
+  }
+}
+
+.temperature-unit {
+  font-size: 1.5rem;
+  vertical-align: super;
+}
+
+/* ============================================================================
+   Buttons & Controls
+   ============================================================================ */
+
+.btn {
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-height: var(--touch-target);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1rem;
+}
+
+/* Primary action button */
+.btn-action,
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn-action:hover,
+.btn-primary:hover {
+  background-color: darken(var(--primary-color), 10%);
+  border-color: darken(var(--primary-color), 10%);
+  box-shadow: 0 4px 12px rgba(163, 74, 23, 0.3);
+}
+
+/* Large prominent button */
+.btn-lg-action {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  margin: var(--spacing-md) 0;
+}
+
+@media (min-width: 768px) {
+  .btn-lg-action {
+    max-width: 400px;
+    margin: var(--spacing-lg) auto;
+    display: block;
+  }
+}
+
+/* Secondary buttons */
+.btn-secondary,
+.btn-outline-secondary {
+  border-radius: var(--radius-md);
+  min-height: 40px;
+}
+
+/* Small buttons for toggles */
+.btn-sm {
+  min-height: 36px;
+  padding: 0.5rem var(--spacing-md);
+  font-size: 0.875rem;
+}
+
+/* ============================================================================
+   Badges & Status
+   ============================================================================ */
+
+.badge {
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-status {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================================================
+   Device Card Header
+   ============================================================================ */
+
+.device-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.device-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  margin: 0;
+}
+
+.device-info {
+  font-size: 0.875rem;
+  color: var(--muted-text);
+}
+
+.device-badges {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .device-header {
+    gap: var(--spacing-lg);
+  }
+
+  .device-title {
+    font-size: 1.75rem;
+  }
+}
+
+/* ============================================================================
+   Tabs & Navigation
+   ============================================================================ */
+
+.nav-tabs {
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  color: var(--muted-text);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--dark-text);
+  border-bottom-color: var(--border-color);
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+  background-color: transparent;
+}
+
+.tab-content {
+  margin-top: 0;
+}
+
+.tab-pane {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   Form Controls
+   ============================================================================ */
+
+.form-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--dark-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.form-control,
+.form-select {
+  border-radius: var(--radius-md);
+  border-color: var(--border-color);
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  min-height: var(--touch-target);
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(163, 74, 23, 0.1);
+}
+
+.input-group {
+  gap: var(--spacing-sm);
+}
+
+/* ============================================================================
+   Grid & Layout Utilities
+   ============================================================================ */
+
+/* Mobile-first grid */
+.grid-responsive {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: 1fr;
+}
+
+/* 2 columns on tablet and up */
+@media (min-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 3 columns on desktop */
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Full width on mobile, 2 columns on larger screens */
+.grid-2-lg {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 992px) {
+  .grid-2-lg {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================================================
+   Device View Container
+   ============================================================================ */
+
+.device-view {
+  animation: slideIn 0.3s ease-in;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   Non-Staff User Dashboard
+   ============================================================================ */
+
+.user-dashboard {
+  padding-top: var(--spacing-md);
+  padding-bottom: var(--spacing-2xl);
+}
+
+.hero-section {
+  margin-bottom: var(--spacing-2xl);
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dark-text);
+  margin-bottom: var(--spacing-lg);
+}
+
+.status-grid {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: 1fr;
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (min-width: 768px) {
+  .status-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.control-section {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: var(--spacing-lg);
+}
+
+.control-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.control-group:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   Staff Dashboard - Diagnostics & Advanced
+   ============================================================================ */
+
+.diagnostics-grid {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .diagnostics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.diagnostic-section {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.diagnostic-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--dark-text);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.diagnostic-table {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.diagnostic-table td {
+  padding: var(--spacing-sm);
+  border-color: var(--border-color);
+}
+
+/* ============================================================================
+   Chart Container
+   ============================================================================ */
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 300px;
+  width: 100%;
+  margin-top: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .chart-wrapper {
+    height: 350px;
+  }
+}
+
+.chart-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.chart-controls .btn {
+  min-height: 36px;
+  padding: 0.5rem var(--spacing-md);
+  font-size: 0.875rem;
+}
+
+/* ============================================================================
+   Spinner & Loading
+   ============================================================================ */
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============================================================================
+   Toasts & Notifications
+   ============================================================================ */
+
+.toast {
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: var(--spacing-md);
+}
+
+.toast-container {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: 1050;
+}
+
+/* ============================================================================
+   Responsive Typography
+   ============================================================================ */
+
+@media (max-width: 576px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  h5 {
+    font-size: 1rem;
+  }
+
+  h6 {
+    font-size: 0.875rem;
+  }
+}
+
+/* ============================================================================
+   Mobile Navbar Adjustments
+   ============================================================================ */
+
+.navbar {
+  padding: var(--spacing-md) 0;
+}
+
+.navbar-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.navbar-nav {
+  gap: var(--spacing-sm);
+}
+
+.nav-link {
+  padding: 0.5rem var(--spacing-md);
+}
+
+/* ============================================================================
+   Device Selection Dropdown
+   ============================================================================ */
+
+#device-select {
+  border-radius: var(--radius-md);
+  border-color: var(--border-color);
+  min-height: var(--touch-target);
+  padding: 0.75rem var(--spacing-md);
+  font-size: 1rem;
+}
+
+/* ============================================================================
+   Accessibility & Focus States
+   ============================================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+  .navbar,
+  .nav-tabs,
+  .btn,
+  .chart-controls {
+    display: none;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+  }
+}

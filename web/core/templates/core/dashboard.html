@@ -10,36 +10,40 @@
     {% include 'core/_pwa_script.html' %}
     {% include 'core/_navbar.html' %}
 
-    <div class="container py-3">
-      {% if not devices %}
-        <div class="alert alert-warning">
-          {% trans "You have no devices. Create one in Admin -> Core -> Devices." %}
-        </div>
-      {% else %}
-        {% if devices|length > 1 %}
-        <div class="mb-3">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label for="device-select" class="form-label mb-0">
-              {% trans "Device:" %}
-            </label>
-            <select id="device-select" class="form-select" style="max-width: 300px;">
-              {% for d in devices %}
-                <option value="{{ d.device_id }}">{{ d.device_id }}</option>
-              {% endfor %}
-            </select>
+    <main class="py-3">
+      <div class="container-fluid">
+        {% if not devices %}
+          <div class="alert alert-warning mt-4">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            {% trans "You have no devices. Create one in Admin -> Core -> Devices." %}
           </div>
-        </div>
-        {% endif %}
-        
-        <div id="devices-container">
-          {% for d in devices %}
-            <div class="device-view" data-device="{{ d.device_id }}" style="display: none;">
-              {% include 'core/_device_card.html' with d=d latest=latest %}
+        {% else %}
+          <!-- Device Selection -->
+          {% if devices|length > 1 %}
+            <div class="mb-4">
+              <label for="device-select" class="form-label fw-semibold">
+                <i class="bi bi-controller me-2"></i>
+                {% trans "Select Device:" %}
+              </label>
+              <select id="device-select" class="form-select" style="max-width: 400px;">
+                {% for d in devices %}
+                  <option value="{{ d.device_id }}">{{ d.device_id }}</option>
+                {% endfor %}
+              </select>
             </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div>
+          {% endif %}
+
+          <!-- Devices Container -->
+          <div id="devices-container">
+            {% for d in devices %}
+              <div class="device-view" data-device="{{ d.device_id }}" style="display: none;">
+                {% include 'core/_device_card.html' with d=d latest=latest staff_view=True %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </main>
 
     {% include 'core/_toasts.html' %}
 
